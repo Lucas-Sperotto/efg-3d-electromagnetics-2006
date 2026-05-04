@@ -111,6 +111,15 @@ target_link_libraries(test_lagrange_system
     efg_core
 )
 
+add_executable(test_lagrange_solve
+  tests/test_lagrange_solve.c
+)
+
+target_link_libraries(test_lagrange_solve
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_mat4
   tests/test_mat4.c
 )
@@ -220,6 +229,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_gauss PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_global_stiffness PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_lagrange_system PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_lagrange_solve PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mat4 PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_partition PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_linear_reproduction PRIVATE -Wall -Wextra -Wpedantic)
@@ -241,6 +251,7 @@ add_test(NAME test_error_norm COMMAND test_error_norm)
 add_test(NAME test_gauss COMMAND test_gauss)
 add_test(NAME test_global_stiffness COMMAND test_global_stiffness)
 add_test(NAME test_lagrange_system COMMAND test_lagrange_system)
+add_test(NAME test_lagrange_solve COMMAND test_lagrange_solve)
 add_test(NAME test_mat4 COMMAND test_mat4)
 add_test(NAME test_mls_partition COMMAND test_mls_partition)
 add_test(NAME test_mls_linear_reproduction COMMAND test_mls_linear_reproduction)
