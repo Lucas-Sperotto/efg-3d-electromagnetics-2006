@@ -6,6 +6,8 @@ Para avaliar a correção e a precisão do método, foi utilizado um problema co
 
 Considere uma caixa cúbica com paredes condutoras perfeitas, como mostrado na Fig. 1. Para caracterizar esse problema como eletromagnético, as paredes condutoras com diferentes potenciais não podem estar conectadas. Ele pode ser modelado como uma caixa com um isolante infinitesimal entre as paredes laterais e a parede superior.
 
+**Fig. 1.** Caixa cúbica eletrostática.
+
 Esse problema é um bom *benchmark* porque possui solução analítica e porque o potencial eletrostático apresenta fortes variações nos cantos superiores. A solução analítica para $L = 10$ e $V_0 = 10\,\text{V}$ é
 
 $$
@@ -26,8 +28,6 @@ e
 $$
 k_{mn} = \sqrt{\left(\frac{n\pi}{10}\right)^2 + \left(\frac{m\pi}{10}\right)^2}.
 $$
-
-**Fig. 1.** Caixa cúbica eletrostática.
 
 ## 3.2. Distribuição de nós e domínio de influência
 
@@ -51,11 +51,9 @@ A integração foi realizada utilizando $15 \times 15 \times 15$ células de int
 
 Ao utilizar a função delta de Dirac como função interpoladora dos multiplicadores de Lagrange, obtém-se uma simplificação, pois duas integrais de superfície da Eq. (7) não precisam ser realizadas.
 
-As linhas de contorno da solução foram plotadas no plano $yz$ em $x = 5{,}33$, como mostrado na Fig. 3.
+As linhas de contorno da solução foram plotadas no plano $yz$ em $x = 5{,}33$, como mostrado na Fig. 3. Esse problema também foi resolvido usando FEM com os mesmos nós em uma malha de Delaunay. A norma do erro relativo dos valores do potencial, calculada pela Eq. (16), foi de $3{,}56\%$ no FEM e de $1{,}40\%$ no EFG. O erro máximo encontrado foi de $1{,}08\,\text{V}$ no FEM e de $0{,}15\,\text{V}$ no EFG.
 
 **Fig. 3.** Gráficos de contorno do potencial em $x = 5{,}33$.
-
-Esse problema também foi resolvido usando FEM com os mesmos nós em uma malha de Delaunay. A norma do erro relativo dos valores do potencial, calculada pela Eq. (16), foi de $3{,}56\%$ no FEM e de $1{,}40\%$ no EFG. O erro máximo encontrado foi de $1{,}08\,\text{V}$ no FEM e de $0{,}15\,\text{V}$ no EFG.
 
 A norma relativa do erro é dada por
 

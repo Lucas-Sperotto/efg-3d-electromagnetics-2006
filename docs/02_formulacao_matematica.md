@@ -5,7 +5,7 @@
 Problemas eletrostáticos podem ser descritos pela forma forte definida pela equação de Poisson:
 
 $$
-\nabla \cdot \left(\varepsilon \nabla V\right) = -\rho
+\vec{\nabla} \cdot \left(\varepsilon \vec{\nabla} V\right) = -\rho
 $$
 
 com as condições de contorno:
@@ -25,12 +25,9 @@ Entre as técnicas mais utilizadas, podem ser mencionados o método dos multipli
 Para utilizar os multiplicadores de Lagrange, emprega-se um funcional energético modificado, como mostrado a seguir:
 
 $$
-\Pi(V,\lambda)
-=
-\frac{1}{2}\int_{\Omega} \varepsilon \nabla V \cdot \nabla V\,d\Omega
--
-\int_{\Omega} \rho V\,d\Omega
-+
+\Pi(V,\lambda) =
+\frac{1}{2}\int_{\Omega} \varepsilon \vec{\nabla} V \cdot \vec{\nabla} V d\Omega -
+\int_{\Omega} \rho V d\Omega +
 \int_{\Gamma_d} \lambda (V - V_d)\,d\Gamma .
 $$
 
@@ -39,11 +36,9 @@ A avaliação do ponto estacionário do funcional em relação às variações e
 **Encontrar $V \in H^1(\Omega)$ e $\lambda \in H^{-1/2}(\Gamma_d)$ tais que:**
 
 $$
-\int_{\Omega} \varepsilon \nabla V \cdot \nabla u\,d\Omega
-+
-\int_{\Gamma_d} \lambda u\,d\Gamma
-=
-\int_{\Omega} \rho u\,d\Omega,
+\int_{\Omega} \varepsilon \vec{\nabla} V \cdot \vec{\nabla} u d\Omega +
+\int_{\Gamma_d} \lambda u d\Gamma =
+\int_{\Omega} \rho u d\Omega,
 \qquad
 \forall u \in H^1(\Omega),
 $$
@@ -80,8 +75,7 @@ G & 0
 \begin{bmatrix}
 V \\
 \lambda
-\end{bmatrix}
-=
+\end{bmatrix} =
 \begin{bmatrix}
 f \\
 b
@@ -172,7 +166,7 @@ $$
 w(r_x)w(r_y)w(r_z).
 $$
 
-De fato, para definir o suporte da função peso, um parâmetro deve ser colocado no argumento de $w$, como mostrado a seguir. A definição de $d_{mI}$ para cada nó fornece a influência desse nó e, portanto, o suporte de sua função de forma:
+De fato, para definir o suporte da função peso, um parâmetro deve ser colocado no argumento de $w$, como mostrado a seguir. A definição de $d_{m}$ para cada nó ($d_{mI}$) fornece a influência desse nó e, portanto, o suporte de sua função de forma:
 
 $$
 r_x=\frac{|x-x_I|}{d_{mI}},

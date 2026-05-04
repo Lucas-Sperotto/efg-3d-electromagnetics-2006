@@ -1,10 +1,4 @@
-# 4. Conclusão, agradecimentos e referências
-
-> **Fonte:** tradução técnica da Seção IV, agradecimentos e referências do artigo *The Element-Free Galerkin Method in Three-Dimensional Electromagnetic Problems*, publicado em *IEEE Transactions on Magnetics*, v. 42, n. 4, abril de 2006.
-
----
-
-## IV. Conclusão
+# 4. Conclusão
 
 Neste trabalho, o método sem malha **Element-Free Galerkin** (**EFG**) foi aplicado para obter a solução numérica de problemas eletrostáticos tridimensionais (3-D).
 
@@ -45,11 +39,3 @@ Este trabalho recebeu apoio parcial das agências brasileiras **CAPES** e **CNPq
 [7] Y. Saad e M. Schultz, “GMRES: A generalized minimal residual algorithm for solving nonsymmetric linear systems,” *SIAM Journal on Scientific Computing*, v. 7, n. 3, p. 856–869, julho 1986.
 
 [8] G. F. Parreira, A. R. Fonseca, A. C. Lisboa, E. J. Silva e R. C. Mesquita, “Efficient algorithms and data structures for element-free Galerkin method,” em *Proceedings of the 15th Conference on the Computation of Electromagnetic Fields*, junho 2005, p. 212–213.
-
----
-
-## Nota editorial
-
-Manuscrito recebido em 20 de junho de 2005.
-
-E-mail informado no artigo original: `renato@ufmg.br`.
