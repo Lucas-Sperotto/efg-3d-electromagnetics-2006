@@ -8,6 +8,9 @@
  * scalar functions w(r); it does not define the 3-D influence domain yet.
  */
 
+#define WEIGHT_OK 0
+#define WEIGHT_INVALID_ARGUMENT 1
+
 /*
  * Cubic spline weight function.
  *
@@ -45,5 +48,38 @@ double weight_quadratic(double r);
  * shape-function derivatives yet.
  */
 double weight_quadratic_derivative(double r);
+
+/*
+ * Cubic tensor-product weight for a cubic influence domain.
+ *
+ * This helper will be used later when computing grad Phi_I in the MLS linear
+ * 3-D implementation. It does not implement shape-function derivatives,
+ * stiffness assembly, Lagrange terms, or GMRES.
+ */
+int weight_cubic_tensor3d(double x,
+                          double y,
+                          double z,
+                          double xI,
+                          double yI,
+                          double zI,
+                          double d,
+                          double *w);
+
+/*
+ * Physical gradient of the cubic tensor-product weight.
+ *
+ * The derivatives are with respect to physical x, y, and z. The scalar weight
+ * derivative is still taken with respect to normalized r.
+ */
+int weight_cubic_tensor3d_gradient(double x,
+                                   double y,
+                                   double z,
+                                   double xI,
+                                   double yI,
+                                   double zI,
+                                   double d,
+                                   double *dw_dx,
+                                   double *dw_dy,
+                                   double *dw_dz);
 
 #endif

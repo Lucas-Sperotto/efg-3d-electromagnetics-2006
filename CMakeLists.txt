@@ -133,6 +133,15 @@ target_link_libraries(test_weight_derivatives
     efg_core
 )
 
+add_executable(test_weight_tensor3d
+  tests/test_weight_tensor3d.c
+)
+
+target_link_libraries(test_weight_tensor3d
+  PRIVATE
+    efg_core
+)
+
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(efg_core PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(smoke_test PRIVATE -Wall -Wextra -Wpedantic)
@@ -146,6 +155,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_support PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_weight PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_weight_derivatives PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_weight_tensor3d PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 enable_testing()
@@ -158,3 +168,4 @@ add_test(NAME test_mls_linear_reproduction COMMAND test_mls_linear_reproduction)
 add_test(NAME test_support COMMAND test_support)
 add_test(NAME test_weight COMMAND test_weight)
 add_test(NAME test_weight_derivatives COMMAND test_weight_derivatives)
+add_test(NAME test_weight_tensor3d COMMAND test_weight_tensor3d)
