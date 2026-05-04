@@ -50,6 +50,24 @@ target_link_libraries(reproduce_analytical_slice
     efg_core
 )
 
+add_executable(test_gauss_cube
+  apps/test_gauss_cube.c
+)
+
+target_link_libraries(test_gauss_cube
+  PRIVATE
+    efg_core
+)
+
+add_executable(test_gauss
+  tests/test_gauss.c
+)
+
+target_link_libraries(test_gauss
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_weight
   tests/test_weight.c
 )
@@ -63,9 +81,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(efg_core PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(smoke_test PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(reproduce_analytical_slice PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_gauss_cube PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_gauss PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_weight PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 enable_testing()
 add_test(NAME smoke_test COMMAND smoke_test)
+add_test(NAME test_gauss COMMAND test_gauss)
 add_test(NAME test_weight COMMAND test_weight)
