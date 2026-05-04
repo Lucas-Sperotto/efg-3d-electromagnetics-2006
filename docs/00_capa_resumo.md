@@ -1,3 +1,7 @@
+**Navegação:** [README](../README.md) | [Capa e resumo](00_capa_resumo.md) | [1. Introdução](01_introducao.md) | [2. Formulação matemática](02_formulacao_matematica.md) | [3. Resultados numéricos](03_resultados_numericos.md) | [4. Conclusão e referências](04_conclusao_referencias.md)
+
+---
+
 # O Método de Galerkin Sem Elementos em Problemas Eletromagnéticos Tridimensionais
 
 **Guilherme F. Parreira, Elson J. Silva, Alexandre R. Fonseca e Renato C. Mesquita**
@@ -28,6 +32,10 @@ Manuscrito recebido em 20 de junho de 2005.
 
 E-mail informado no artigo original: `renato@ufmg.br`.
 
-Digital Object Identifier 10.1109/TMAG.2006.872014
+Digital Object Identifier: [10.1109/TMAG.2006.872014](https://doi.org/10.1109/TMAG.2006.872014)
 
 0018-9464/$20.00 © 2006 IEEE
+
+---
+
+**Anterior:** [README](../README.md) | **Próximo:** [1. Introdução](01_introducao.md)

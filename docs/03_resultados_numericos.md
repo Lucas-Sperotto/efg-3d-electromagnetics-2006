@@ -1,10 +1,16 @@
+**Navegação:** [README](../README.md) | [Capa e resumo](00_capa_resumo.md) | [1. Introdução](01_introducao.md) | [2. Formulação matemática](02_formulacao_matematica.md) | [3. Resultados numéricos](03_resultados_numericos.md) | [4. Conclusão e referências](04_conclusao_referencias.md)
+
+---
+
 # 3. Resultados numéricos
 
-Para avaliar a correção e a precisão do método, foi utilizado um problema com solução analítica viável.
+Para avaliar a correção e a precisão do método, foi utilizado um problema com solução analítica conhecida.
 
 ## 3.1. Problema de referência: caixa cúbica eletrostática
 
 Considere uma caixa cúbica com paredes condutoras perfeitas, como mostrado na Fig. 1. Para caracterizar esse problema como eletromagnético, as paredes condutoras com diferentes potenciais não podem estar conectadas. Ele pode ser modelado como uma caixa com um isolante infinitesimal entre as paredes laterais e a parede superior.
+
+![Caixa cúbica eletrostática](img/fig1.png)
 
 **Fig. 1.** Caixa cúbica eletrostática.
 
@@ -33,6 +39,8 @@ $$
 
 Para resolver esse problema com o EFG, foi utilizada uma distribuição não uniforme de nós, com nós densamente alocados nos cantos superiores da caixa e distribuídos de forma mais grosseira ao longo da região em que os potenciais apresentam comportamento mais regular. Essa distribuição pode ser vista na Fig. 2.
 
+![Distribuição dos nós para o problema de referência](img/fig2.png)
+
 **Fig. 2.** Distribuição dos nós para o problema de referência.
 
 O tamanho do domínio de influência $d_{mI}$ deve ser definido com cuidado. Se esse tamanho for muito grande, muitos nós serão incluídos no domínio de influência, de modo que o custo computacional da construção das funções de forma aumentará de maneira proibitiva. Por outro lado, se $d_{mI}$ for muito pequeno, o domínio poderá não ser completamente coberto e as funções de forma não serão construídas corretamente.
@@ -47,11 +55,13 @@ Neste trabalho, foram localizados os três vizinhos mais próximos de cada nó, 
 
 ## 3.3. Integração numérica e comparação com FEM
 
-A integração foi realizada utilizando $15 \times 15 \times 15$ células de integração. A quadratura de Gauss de ordem 2 foi suficiente para obter uma boa aproximação, apesar da complexidade das funções de forma. Foi adotada a função peso spline cúbica da Eq. (10), com construção cúbica do domínio de influência.
+A integração foi realizada utilizando $15 \times 15 \times 15$ células de integração. A quadratura de Gauss de ordem 2 foi suficiente para obter uma boa aproximação, apesar da complexidade das funções de forma. Foi adotada a função peso spline cúbica da Eq. (10), com domínio de influência cúbico.
 
-Ao utilizar a função delta de Dirac como função interpoladora dos multiplicadores de Lagrange, obtém-se uma simplificação, pois duas integrais de superfície da Eq. (7) não precisam ser realizadas.
+Ao utilizar a função delta de Dirac como função interpolante dos multiplicadores de Lagrange, obtém-se uma simplificação, pois duas integrais de superfície da Eq. (7) não precisam ser realizadas.
 
 As linhas de contorno da solução foram plotadas no plano $yz$ em $x = 5{,}33$, como mostrado na Fig. 3. Esse problema também foi resolvido usando FEM com os mesmos nós em uma malha de Delaunay. A norma do erro relativo dos valores do potencial, calculada pela Eq. (16), foi de $3{,}56\%$ no FEM e de $1{,}40\%$ no EFG. O erro máximo encontrado foi de $1{,}08\,\text{V}$ no FEM e de $0{,}15\,\text{V}$ no EFG.
+
+![Gráficos de contorno do potencial em x igual a 5,33](img/fig3.png)
 
 **Fig. 3.** Gráficos de contorno do potencial em $x = 5{,}33$.
 
@@ -70,15 +80,19 @@ A comparação entre as soluções por EFG e FEM não considerou os tempos compu
 
 Para analisar a convergência do método, foi utilizada uma distribuição uniforme de nós. A curva de convergência do método pode ser observada na Fig. 4, em que $d$ indica a distância entre nós vizinhos.
 
+![Norma relativa do erro durante o refinamento da distribuição de nós](img/fig4.png)
+
 **Fig. 4.** Norma relativa do erro durante o refinamento da distribuição de nós.
 
 Como pode ser observado, foi obtida uma taxa de convergência de primeira ordem, pois as funções de forma escolhidas nas Eqs. (8) e (9) são interpolantes de primeira ordem.
 
-A solução obtida com duas funções peso foi avaliada: a função peso spline cúbica da Eq. (10) e a função peso quadrática da Eq. (11). Embora a primeira seja mais complexa do que a segunda, o erro gerado com a função quadrática foi ligeiramente menor do que aquele obtido com a spline cúbica. Entretanto, a diferença observada no erro entre as duas funções peso indica que o uso de qualquer uma delas não deve representar uma dificuldade.
+A solução obtida com duas funções peso foi avaliada: a função peso spline cúbica da Eq. (10) e a função peso quadrática da Eq. (11). Embora a primeira seja mais complexa do que a segunda, o erro gerado com a função quadrática foi ligeiramente menor do que aquele obtido com a spline cúbica. Entretanto, a diferença observada no erro entre as duas funções peso indica que o uso de qualquer uma delas não deve representar uma limitação relevante.
 
 ## 3.5. Influência do número de células de integração
 
 A Fig. 5 mostra o comportamento da solução em relação à integração numérica. Ao utilizar o método de Gauss-Legendre, a grade de integração é criada dividindo todo o domínio em caixas cúbicas iguais, denominadas células de Gauss.
+
+![Norma relativa do erro ao aumentar o número de células de integração](img/fig5.png)
 
 **Fig. 5.** Norma relativa do erro ao aumentar o número de células de integração.
 
@@ -87,3 +101,7 @@ A integração das derivadas das funções de forma ainda é um problema em aber
 Com base nesses resultados, um parâmetro pode ser definido para ajustar a densidade das células de integração à densidade dos nós. Trabalhando de acordo com essa estratégia, tempo computacional não será gasto onde ele não é necessário.
 
 Acoplar o número de células de integração à densidade de nós é uma estratégia que pode ser prontamente adotada de duas maneiras. Uma possibilidade é utilizar uma estrutura de dados, como uma *octree*, para definir regiões em que a integração deve ser mais fina ou mais grosseira de acordo com a densidade dos nós, estabelecendo então o número de células para cada região. Como segunda opção, a ordem de integração pode ser alterada de célula para célula, de modo a levar em conta a densidade de nós no interior das células.
+
+---
+
+**Anterior:** [2. Formulação matemática](02_formulacao_matematica.md) | **Próximo:** [4. Conclusão e referências](04_conclusao_referencias.md)

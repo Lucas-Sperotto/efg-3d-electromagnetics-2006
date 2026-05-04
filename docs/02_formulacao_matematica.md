@@ -1,3 +1,7 @@
+**Navegação:** [README](../README.md) | [Capa e resumo](00_capa_resumo.md) | [1. Introdução](01_introducao.md) | [2. Formulação matemática](02_formulacao_matematica.md) | [3. Resultados numéricos](03_resultados_numericos.md) | [4. Conclusão e referências](04_conclusao_referencias.md)
+
+---
+
 # 2. Formulação matemática
 
 ## 2.1. Forma fraca e sistema linear
@@ -16,7 +20,7 @@ V = V_d \quad \text{em } \Gamma_d
 -\varepsilon \frac{\partial V}{\partial n} = 0 \quad \text{em } \Gamma_n .
 $$
 
-Em que $V$ é o potencial eletrostático, $\varepsilon$ é a permissividade elétrica, $\rho$ é a densidade volumétrica de carga, $\Gamma_n$ é a fronteira com condição de Neumann homogênea e $V_d$ é o potencial imposto na fronteira de Dirichlet $\Gamma_d$.
+em que $V$ é o potencial eletrostático, $\varepsilon$ é a permissividade elétrica, $\rho$ é a densidade volumétrica de carga, $\Gamma_n$ é a fronteira com condição de Neumann homogênea e $V_d$ é o potencial imposto na fronteira de Dirichlet $\Gamma_d$.
 
 As funções de forma do EFG não satisfazem a propriedade do delta de Kronecker. Portanto, as condições de contorno essenciais não podem ser impostas diretamente, como é feito no FEM e no método das diferenças finitas. Uma técnica separada deve ser utilizada para impô-las.
 
@@ -65,7 +69,7 @@ $$
 \lambda(x) \approx \sum_{i=1}^{N_{\lambda}} N_i(x)\lambda_i .
 $$
 
-Em que $x=(x,y,z)$, $\Phi_i(x)$ são as funções de forma do EFG e $N_i(x)$ são os interpolantes dos multiplicadores de Lagrange. O seguinte sistema linear é obtido:
+em que $x=(x,y,z)$, $\Phi_i(x)$ são as funções de forma do EFG e $N_i(x)$ são os interpolantes dos multiplicadores de Lagrange. O seguinte sistema linear é obtido:
 
 $$
 \begin{bmatrix}
@@ -82,7 +86,7 @@ b
 \end{bmatrix} .
 $$
 
-Com:
+com:
 
 $$
 K_{ij}=\int_{\Omega} \varepsilon \nabla \Phi_i \cdot \nabla \Phi_j\,d\Omega,
@@ -100,7 +104,7 @@ $$
 f_i=\int_{\Omega} \rho \Phi_i\,d\Omega .
 $$
 
-O uso dos multiplicadores de Lagrange traz algumas desvantagens, pois quebra a propriedade de definida positiva da matriz de rigidez por meio da matriz $G$ e aumenta a ordem do sistema linear a ser resolvido, conforme mostrado no sistema acima. Entretanto, em problemas tridimensionais, o volume cresce a uma taxa muito maior do que a área da fronteira. Assim, pode-se concluir que, à medida que o problema aumenta, a influência dos multiplicadores de Lagrange na ordem do sistema linear tende a se tornar menos significativa.
+O uso dos multiplicadores de Lagrange traz algumas desvantagens, pois faz com que a matriz de rigidez deixe de ser definida positiva por causa da matriz $G$ e aumenta a ordem do sistema linear a ser resolvido, conforme mostrado no sistema acima. Entretanto, em problemas tridimensionais, o volume cresce a uma taxa muito maior do que a área da fronteira. Assim, pode-se concluir que, à medida que o problema aumenta, a influência dos multiplicadores de Lagrange na ordem do sistema linear tende a se tornar menos significativa.
 
 Como o sistema não é definido positivo, foi utilizado o método GMRES para resolvê-lo [7].
 
@@ -130,7 +134,7 @@ $$
 B_I(x)=w(x-x_I)p(x_I).
 $$
 
-Como foi escolhido um vetor $p$ de primeira ordem, as funções de forma do EFG também são interpolantes de primeira ordem. Elas possuem suporte compacto devido à natureza da função peso $w(x-x_I)$, que é escolhida de modo a ser diferente de zero apenas em uma pequena parte do domínio.
+Como foi escolhido um vetor $p$ de primeira ordem, obtêm-se funções de forma do EFG de primeira ordem. Elas possuem suporte compacto devido à natureza da função peso $w(x-x_I)$, que é escolhida de modo a ser diferente de zero apenas em uma pequena parte do domínio.
 
 As funções de forma a serem avaliadas em $x$ são então construídas encontrando-se os nós cujo suporte da função peso contém $x$.
 
@@ -166,7 +170,7 @@ $$
 w(r_x)w(r_y)w(r_z).
 $$
 
-De fato, para definir o suporte da função peso, um parâmetro deve ser colocado no argumento de $w$, como mostrado a seguir. A definição de $d_{m}$ para cada nó ($d_{mI}$) fornece a influência desse nó e, portanto, o suporte de sua função de forma:
+Para definir o suporte da função peso, um parâmetro deve ser incluído no argumento de $w$, como mostrado a seguir. A definição de $d_{m}$ para cada nó ($d_{mI}$) fornece a influência desse nó e, portanto, o suporte de sua função de forma:
 
 $$
 r_x=\frac{|x-x_I|}{d_{mI}},
@@ -179,3 +183,7 @@ $$
 Outro aspecto importante que deve ser levado em conta é o custo computacional. A construção das funções de forma e o cálculo de suas derivadas constituem a parte mais custosa do EFG em termos de tempo computacional.
 
 Para acelerar o método e encontrar de maneira eficiente os nós no domínio de influência, algumas técnicas de localização de pontos podem ser aplicadas, como mostrado em [8].
+
+---
+
+**Anterior:** [1. Introdução](01_introducao.md) | **Próximo:** [3. Resultados numéricos](03_resultados_numericos.md)
