@@ -19,6 +19,7 @@ add_library(efg_core
   src/gauss.c
   src/global_stiffness.c
   src/gmres.c
+  src/lagrange_system.c
   src/mat4.c
   src/mls.c
   src/nodes.c
@@ -87,6 +88,15 @@ add_executable(test_global_stiffness
 )
 
 target_link_libraries(test_global_stiffness
+  PRIVATE
+    efg_core
+)
+
+add_executable(test_lagrange_system
+  tests/test_lagrange_system.c
+)
+
+target_link_libraries(test_lagrange_system
   PRIVATE
     efg_core
 )
@@ -198,6 +208,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_dirichlet_constraints PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gauss PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_global_stiffness PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_lagrange_system PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mat4 PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_partition PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_linear_reproduction PRIVATE -Wall -Wextra -Wpedantic)
@@ -217,6 +228,7 @@ add_test(NAME test_dirichlet_constraints COMMAND test_dirichlet_constraints)
 add_test(NAME test_error_norm COMMAND test_error_norm)
 add_test(NAME test_gauss COMMAND test_gauss)
 add_test(NAME test_global_stiffness COMMAND test_global_stiffness)
+add_test(NAME test_lagrange_system COMMAND test_lagrange_system)
 add_test(NAME test_mat4 COMMAND test_mat4)
 add_test(NAME test_mls_partition COMMAND test_mls_partition)
 add_test(NAME test_mls_linear_reproduction COMMAND test_mls_linear_reproduction)
