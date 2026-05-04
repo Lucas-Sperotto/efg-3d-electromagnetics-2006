@@ -17,6 +17,7 @@ add_library(efg_core
   src/error_norm.c
   src/gauss.c
   src/gmres.c
+  src/mat4.c
   src/mls.c
   src/nodes.c
   src/support.c
@@ -69,6 +70,15 @@ target_link_libraries(test_gauss
     efg_core
 )
 
+add_executable(test_mat4
+  tests/test_mat4.c
+)
+
+target_link_libraries(test_mat4
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_error_norm
   tests/test_error_norm.c
 )
@@ -102,6 +112,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(reproduce_analytical_slice PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gauss_cube PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gauss PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_mat4 PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_error_norm PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_support PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_weight PRIVATE -Wall -Wextra -Wpedantic)
@@ -111,5 +122,6 @@ enable_testing()
 add_test(NAME smoke_test COMMAND smoke_test)
 add_test(NAME test_error_norm COMMAND test_error_norm)
 add_test(NAME test_gauss COMMAND test_gauss)
+add_test(NAME test_mat4 COMMAND test_mat4)
 add_test(NAME test_support COMMAND test_support)
 add_test(NAME test_weight COMMAND test_weight)
