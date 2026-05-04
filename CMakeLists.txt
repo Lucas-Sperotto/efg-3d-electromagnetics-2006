@@ -85,6 +85,15 @@ target_link_libraries(test_cube_problem
     efg_core
 )
 
+add_executable(test_cube_problem_solve_small
+  tests/test_cube_problem_solve_small.c
+)
+
+target_link_libraries(test_cube_problem_solve_small
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_dense_solver
   tests/test_dense_solver.c
 )
@@ -245,6 +254,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_gauss_cube PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_dirichlet_constraints PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_cube_problem PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_cube_problem_solve_small PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_dense_solver PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gauss PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_global_stiffness PRIVATE -Wall -Wextra -Wpedantic)
@@ -268,6 +278,7 @@ enable_testing()
 add_test(NAME smoke_test COMMAND smoke_test)
 add_test(NAME test_dirichlet_constraints COMMAND test_dirichlet_constraints)
 add_test(NAME test_cube_problem COMMAND test_cube_problem)
+add_test(NAME test_cube_problem_solve_small COMMAND test_cube_problem_solve_small)
 add_test(NAME test_dense_solver COMMAND test_dense_solver)
 add_test(NAME test_error_norm COMMAND test_error_norm)
 add_test(NAME test_gauss COMMAND test_gauss)
