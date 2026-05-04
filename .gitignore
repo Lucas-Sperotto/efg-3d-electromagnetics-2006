@@ -66,3 +66,7 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Referências locais de terceiros — não redistribuir sem licença explícita
+docs/ref/ESFLib/
+docs/ref/ESFLib.tar.gz
