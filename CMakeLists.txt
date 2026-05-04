@@ -16,6 +16,7 @@ add_library(efg_core
   src/assembly.c
   src/error_norm.c
   src/gauss.c
+  src/global_stiffness.c
   src/gmres.c
   src/mat4.c
   src/mls.c
@@ -67,6 +68,15 @@ add_executable(test_gauss
 )
 
 target_link_libraries(test_gauss
+  PRIVATE
+    efg_core
+)
+
+add_executable(test_global_stiffness
+  tests/test_global_stiffness.c
+)
+
+target_link_libraries(test_global_stiffness
   PRIVATE
     efg_core
 )
@@ -176,6 +186,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(reproduce_analytical_slice PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gauss_cube PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gauss PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_global_stiffness PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mat4 PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_partition PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_linear_reproduction PRIVATE -Wall -Wextra -Wpedantic)
@@ -193,6 +204,7 @@ enable_testing()
 add_test(NAME smoke_test COMMAND smoke_test)
 add_test(NAME test_error_norm COMMAND test_error_norm)
 add_test(NAME test_gauss COMMAND test_gauss)
+add_test(NAME test_global_stiffness COMMAND test_global_stiffness)
 add_test(NAME test_mat4 COMMAND test_mat4)
 add_test(NAME test_mls_partition COMMAND test_mls_partition)
 add_test(NAME test_mls_linear_reproduction COMMAND test_mls_linear_reproduction)
