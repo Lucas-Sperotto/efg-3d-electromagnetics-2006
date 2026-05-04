@@ -1,11 +1,10 @@
 #ifndef EFG_ANALYTICAL_H
 #define EFG_ANALYTICAL_H
 
+#include "analytical.h"
+
 /*
- * Placeholder for the analytical benchmark solution.
- *
- * TODO: implement only from docs/03_resultados_numericos.md, section 3.1,
- * keeping the equation reference in the function comment.
+ * Compatibility header for the original include/efg layout.
  */
 int efg_analytical_module_ready(void);
 
