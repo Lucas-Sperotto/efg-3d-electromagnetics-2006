@@ -19,6 +19,15 @@
 double weight_cubic_spline(double r);
 
 /*
+ * Derivative of the cubic spline weight with respect to normalized r.
+ *
+ * This scalar derivative will be used later when computing grad Phi_I in the
+ * MLS implementation. It does not implement tensor-product 3-D derivatives or
+ * shape-function derivatives yet.
+ */
+double weight_cubic_spline_derivative(double r);
+
+/*
  * Quadratic weight function.
  *
  * Article equation: Eq. (11), cited in docs/03_resultados_numericos.md.
@@ -27,5 +36,14 @@ double weight_cubic_spline(double r);
  * shape functions in the EFG method.
  */
 double weight_quadratic(double r);
+
+/*
+ * Derivative of the quadratic weight with respect to normalized r.
+ *
+ * This scalar derivative will be used later when computing grad Phi_I in the
+ * MLS implementation. It does not implement tensor-product 3-D derivatives or
+ * shape-function derivatives yet.
+ */
+double weight_quadratic_derivative(double r);
 
 #endif
