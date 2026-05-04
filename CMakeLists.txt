@@ -183,6 +183,15 @@ target_link_libraries(test_error_norm
     efg_core
 )
 
+add_executable(test_efg_linear_patch_solve
+  tests/test_efg_linear_patch_solve.c
+)
+
+target_link_libraries(test_efg_linear_patch_solve
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_support
   tests/test_support.c
 )
@@ -237,6 +246,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_mls_gradient_linear_reproduction PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_stiffness_cell PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_error_norm PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_efg_linear_patch_solve PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_support PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_weight PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_weight_derivatives PRIVATE -Wall -Wextra -Wpedantic)
@@ -259,6 +269,7 @@ add_test(NAME test_mls_gradient_partition COMMAND test_mls_gradient_partition)
 add_test(NAME test_mls_gradient_linear_reproduction COMMAND test_mls_gradient_linear_reproduction)
 add_test(NAME test_stiffness_cell COMMAND test_stiffness_cell)
 add_test(NAME test_support COMMAND test_support)
+add_test(NAME test_efg_linear_patch_solve COMMAND test_efg_linear_patch_solve)
 add_test(NAME test_weight COMMAND test_weight)
 add_test(NAME test_weight_derivatives COMMAND test_weight_derivatives)
 add_test(NAME test_weight_tensor3d COMMAND test_weight_tensor3d)
