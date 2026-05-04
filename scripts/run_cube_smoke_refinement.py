@@ -71,6 +71,19 @@ CASES = [
         "output": "data/output/cube_smoke_9x9x9.csv",
     },
     {
+        "label": "11x11x11",
+        "nx": 11,
+        "ny": 11,
+        "nz": 11,
+        "nx_cells": 10,
+        "ny_cells": 10,
+        "nz_cells": 10,
+        "sample_nx": 15,
+        "sample_ny": 15,
+        "sample_nz": 15,
+        "output": "data/output/cube_smoke_11x11x11.csv",
+    },
+    {
         "label": "7x7x7_int15",
         "nx": 7,
         "ny": 7,
@@ -96,16 +109,22 @@ CASES = [
         "sample_nz": 13,
         "output": "data/output/cube_smoke_9x9x9_int15.csv",
     },
+    {
+        "label": "11x11x11_int15",
+        "nx": 11,
+        "ny": 11,
+        "nz": 11,
+        "nx_cells": 15,
+        "ny_cells": 15,
+        "nz_cells": 15,
+        "sample_nx": 15,
+        "sample_ny": 15,
+        "sample_nz": 15,
+        "output": "data/output/cube_smoke_11x11x11_int15.csv",
+    },
 ]
 
 # Heavy optional cases for later manual experiments:
-# {
-#     "label": "11x11x11",
-#     "nx": 11, "ny": 11, "nz": 11,
-#     "nx_cells": 10, "ny_cells": 10, "nz_cells": 10,
-#     "sample_nx": 15, "sample_ny": 15, "sample_nz": 15,
-#     "output": "data/output/cube_smoke_11x11x11.csv",
-# }
 # {
 #     "label": "15x15x15",
 #     "nx": 15, "ny": 15, "nz": 15,
