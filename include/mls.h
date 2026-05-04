@@ -6,9 +6,10 @@
 /*
  * Didactic Moving Least Squares helpers.
  *
- * This first MLS step computes only the scalar shape-function values Phi_I(x)
- * for a linear 3-D basis p^T = [1, x, y, z]. It does not compute derivatives,
- * assembly terms, Lagrange multipliers, or GMRES systems.
+ * This MLS module computes scalar shape-function values Phi_I(x) and, in the
+ * gradient API, their first derivatives for a linear 3-D basis
+ * p^T = [1, x, y, z]. It does not implement assembly terms, Lagrange
+ * multipliers, or GMRES systems.
  */
 
 #define MLS_OK 0
@@ -24,6 +25,14 @@ typedef struct MlsShapeValue {
     double phi;
 } MlsShapeValue;
 
+typedef struct MlsShapeGradientValue {
+    int node_index;
+    double phi;
+    double dphi_dx;
+    double dphi_dy;
+    double dphi_dz;
+} MlsShapeGradientValue;
+
 int mls_linear3d_shape_functions(const Node3D *nodes,
                                  int node_count,
                                  double x,
@@ -32,5 +41,14 @@ int mls_linear3d_shape_functions(const Node3D *nodes,
                                  MlsShapeValue *values,
                                  int max_values,
                                  int *value_count);
+
+int mls_linear3d_shape_functions_with_gradients(const Node3D *nodes,
+                                                int node_count,
+                                                double x,
+                                                double y,
+                                                double z,
+                                                MlsShapeGradientValue *values,
+                                                int max_values,
+                                                int *value_count);
 
 #endif
