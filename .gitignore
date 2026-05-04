@@ -1,6 +1,19 @@
 # Prerequisites
 *.d
 
+# CMake build directories
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# Generated numerical output
+data/output/*
+!data/output/.gitkeep
+
 # Object files
 *.o
 *.ko
