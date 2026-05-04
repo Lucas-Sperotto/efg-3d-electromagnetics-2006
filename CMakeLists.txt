@@ -20,6 +20,7 @@ add_library(efg_core
   src/mat4.c
   src/mls.c
   src/nodes.c
+  src/stiffness.c
   src/support.c
   src/vec3.c
   src/weight.c
@@ -115,6 +116,15 @@ target_link_libraries(test_mls_gradient_linear_reproduction
     efg_core
 )
 
+add_executable(test_stiffness_cell
+  tests/test_stiffness_cell.c
+)
+
+target_link_libraries(test_stiffness_cell
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_error_norm
   tests/test_error_norm.c
 )
@@ -171,6 +181,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_mls_linear_reproduction PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_gradient_partition PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_gradient_linear_reproduction PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_stiffness_cell PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_error_norm PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_support PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_weight PRIVATE -Wall -Wextra -Wpedantic)
@@ -187,6 +198,7 @@ add_test(NAME test_mls_partition COMMAND test_mls_partition)
 add_test(NAME test_mls_linear_reproduction COMMAND test_mls_linear_reproduction)
 add_test(NAME test_mls_gradient_partition COMMAND test_mls_gradient_partition)
 add_test(NAME test_mls_gradient_linear_reproduction COMMAND test_mls_gradient_linear_reproduction)
+add_test(NAME test_stiffness_cell COMMAND test_stiffness_cell)
 add_test(NAME test_support COMMAND test_support)
 add_test(NAME test_weight COMMAND test_weight)
 add_test(NAME test_weight_derivatives COMMAND test_weight_derivatives)
