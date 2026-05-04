@@ -1,11 +1,10 @@
 #ifndef EFG_MLS_H
 #define EFG_MLS_H
 
+#include "mls.h"
+
 /*
- * Placeholder for Moving Least Squares shape functions.
- *
- * TODO: implement shape-function construction from
- * docs/02_formulacao_matematica.md, section 2.2, with equation references.
+ * Compatibility header for the original include/efg layout.
  */
 int efg_mls_module_ready(void);
 
