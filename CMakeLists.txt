@@ -19,6 +19,7 @@ add_library(efg_core
   src/gmres.c
   src/mls.c
   src/nodes.c
+  src/support.c
   src/vec3.c
   src/weight.c
 )
@@ -77,6 +78,15 @@ target_link_libraries(test_error_norm
     efg_core
 )
 
+add_executable(test_support
+  tests/test_support.c
+)
+
+target_link_libraries(test_support
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_weight
   tests/test_weight.c
 )
@@ -93,6 +103,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_gauss_cube PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gauss PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_error_norm PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_support PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_weight PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
@@ -100,4 +111,5 @@ enable_testing()
 add_test(NAME smoke_test COMMAND smoke_test)
 add_test(NAME test_error_norm COMMAND test_error_norm)
 add_test(NAME test_gauss COMMAND test_gauss)
+add_test(NAME test_support COMMAND test_support)
 add_test(NAME test_weight COMMAND test_weight)
