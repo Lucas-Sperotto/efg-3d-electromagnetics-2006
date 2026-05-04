@@ -37,10 +37,21 @@ target_link_libraries(smoke_test
     efg_core
 )
 
+add_executable(test_weight
+  tests/test_weight.c
+)
+
+target_link_libraries(test_weight
+  PRIVATE
+    efg_core
+)
+
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(efg_core PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(smoke_test PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_weight PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 enable_testing()
 add_test(NAME smoke_test COMMAND smoke_test)
+add_test(NAME test_weight COMMAND test_weight)
