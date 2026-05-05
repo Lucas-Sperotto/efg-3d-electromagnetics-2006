@@ -44,4 +44,12 @@ int cube_generate_dirichlet_points(double L,
                                    int max_points,
                                    int *point_count);
 
+int cube_generate_dirichlet_points_from_nodes(double L,
+                                              double V0,
+                                              const Node3D *nodes,
+                                              int node_count,
+                                              DirichletPoint *points,
+                                              int max_points,
+                                              int *point_count);
+
 #endif

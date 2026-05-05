@@ -94,6 +94,15 @@ target_link_libraries(test_cube_problem
     efg_core
 )
 
+add_executable(test_cube_problem_dirichlet_from_nodes
+  tests/test_cube_problem_dirichlet_from_nodes.c
+)
+
+target_link_libraries(test_cube_problem_dirichlet_from_nodes
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_cube_problem_nonuniform
   tests/test_cube_problem_nonuniform.c
 )
@@ -273,6 +282,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_gauss_cube PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_dirichlet_constraints PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_cube_problem PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_cube_problem_dirichlet_from_nodes PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_cube_problem_nonuniform PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_cube_problem_solve_small PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_dense_solver PRIVATE -Wall -Wextra -Wpedantic)
@@ -298,6 +308,7 @@ enable_testing()
 add_test(NAME smoke_test COMMAND smoke_test)
 add_test(NAME test_dirichlet_constraints COMMAND test_dirichlet_constraints)
 add_test(NAME test_cube_problem COMMAND test_cube_problem)
+add_test(NAME test_cube_problem_dirichlet_from_nodes COMMAND test_cube_problem_dirichlet_from_nodes)
 add_test(NAME test_cube_problem_nonuniform COMMAND test_cube_problem_nonuniform)
 add_test(NAME test_cube_problem_solve_small COMMAND test_cube_problem_solve_small)
 add_test(NAME test_dense_solver COMMAND test_dense_solver)
