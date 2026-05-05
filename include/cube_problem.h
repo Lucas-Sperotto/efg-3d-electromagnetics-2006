@@ -26,6 +26,13 @@ int cube_generate_regular_nodes(double L,
                                 int max_nodes,
                                 int *node_count);
 
+int cube_generate_top_refined_nodes(double L,
+                                    int base_n,
+                                    int refine_n,
+                                    Node3D *nodes,
+                                    int max_nodes,
+                                    int *node_count);
+
 int cube_dirichlet_point_count(int nx, int ny, int nz);
 
 int cube_generate_dirichlet_points(double L,
