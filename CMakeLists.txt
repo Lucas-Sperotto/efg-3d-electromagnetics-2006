@@ -24,7 +24,9 @@ add_library(efg_core
   src/lagrange_system.c
   src/mat4.c
   src/mls.c
+  src/mls_diagnostic.c
   src/nodes.c
+  src/sparse_matrix.c
   src/stiffness.c
   src/support.c
   src/vec3.c
@@ -283,8 +285,58 @@ target_link_libraries(test_weight_tensor3d
     efg_core
 )
 
+add_executable(test_mls_diagnostic
+  tests/test_mls_diagnostic.c
+)
+
+target_link_libraries(test_mls_diagnostic
+  PRIVATE
+    efg_core
+)
+
+add_executable(test_sparse_matrix
+  tests/test_sparse_matrix.c
+)
+
+target_link_libraries(test_sparse_matrix
+  PRIVATE
+    efg_core
+)
+
+add_executable(test_sparse_global_stiffness
+  tests/test_sparse_global_stiffness.c
+)
+
+target_link_libraries(test_sparse_global_stiffness
+  PRIVATE
+    efg_core
+)
+
+add_executable(test_lagrange_augmented_sparse
+  tests/test_lagrange_augmented_sparse.c
+)
+
+target_link_libraries(test_lagrange_augmented_sparse
+  PRIVATE
+    efg_core
+)
+
+add_executable(test_gmres
+  tests/test_gmres.c
+)
+
+target_link_libraries(test_gmres
+  PRIVATE
+    efg_core
+)
+
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(efg_core PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_mls_diagnostic PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_sparse_matrix PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_sparse_global_stiffness PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_lagrange_augmented_sparse PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_gmres PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(smoke_test PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(reproduce_analytical_slice PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(reproduce_cube_smoke PRIVATE -Wall -Wextra -Wpedantic)
@@ -338,3 +390,8 @@ add_test(NAME test_efg_linear_patch_solve COMMAND test_efg_linear_patch_solve)
 add_test(NAME test_weight COMMAND test_weight)
 add_test(NAME test_weight_derivatives COMMAND test_weight_derivatives)
 add_test(NAME test_weight_tensor3d COMMAND test_weight_tensor3d)
+add_test(NAME test_mls_diagnostic  COMMAND test_mls_diagnostic)
+add_test(NAME test_sparse_matrix            COMMAND test_sparse_matrix)
+add_test(NAME test_sparse_global_stiffness  COMMAND test_sparse_global_stiffness)
+add_test(NAME test_lagrange_augmented_sparse COMMAND test_lagrange_augmented_sparse)
+add_test(NAME test_gmres COMMAND test_gmres)

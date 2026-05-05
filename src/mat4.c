@@ -133,3 +133,69 @@ int mat4_solve(const double A[4][4], const double b[4], double x[4])
 
     return MAT4_OK;
 }
+
+/*
+ * Estimate condition number via max/min absolute pivot from Gaussian
+ * elimination with partial pivoting (no rhs needed). The ratio gives a
+ * cheap surrogate for the true condition number without requiring A^{-1}.
+ */
+int mat4_cond_estimate(const double A[4][4], double *cond_estimate)
+{
+    double work[4][4];
+    double pivot_max = 0.0;
+    double pivot_min = -1.0; /* sentinel */
+
+    if (A == NULL || cond_estimate == NULL) {
+        return MAT4_INVALID_ARGUMENT;
+    }
+
+    for (int row = 0; row < MAT4_SIZE; ++row) {
+        for (int col = 0; col < MAT4_SIZE; ++col) {
+            work[row][col] = A[row][col];
+        }
+    }
+
+    for (int pivot_col = 0; pivot_col < MAT4_SIZE; ++pivot_col) {
+        int pivot_row = pivot_col;
+        double pivot_abs = fabs(work[pivot_col][pivot_col]);
+
+        for (int row = pivot_col + 1; row < MAT4_SIZE; ++row) {
+            const double cand = fabs(work[row][pivot_col]);
+            if (cand > pivot_abs) {
+                pivot_abs = cand;
+                pivot_row = row;
+            }
+        }
+
+        if (pivot_abs == 0.0) {
+            return MAT4_SINGULAR;
+        }
+
+        /* swap rows */
+        if (pivot_row != pivot_col) {
+            for (int col = pivot_col; col < MAT4_SIZE; ++col) {
+                double tmp = work[pivot_col][col];
+                work[pivot_col][col] = work[pivot_row][col];
+                work[pivot_row][col] = tmp;
+            }
+        }
+
+        if (pivot_abs > pivot_max) {
+            pivot_max = pivot_abs;
+        }
+        if (pivot_min < 0.0 || pivot_abs < pivot_min) {
+            pivot_min = pivot_abs;
+        }
+
+        for (int row = pivot_col + 1; row < MAT4_SIZE; ++row) {
+            const double factor = work[row][pivot_col] / work[pivot_col][pivot_col];
+            work[row][pivot_col] = 0.0;
+            for (int col = pivot_col + 1; col < MAT4_SIZE; ++col) {
+                work[row][col] -= factor * work[pivot_col][col];
+            }
+        }
+    }
+
+    *cond_estimate = (pivot_min > 0.0) ? (pivot_max / pivot_min) : 0.0;
+    return MAT4_OK;
+}

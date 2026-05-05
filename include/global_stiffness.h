@@ -32,4 +32,29 @@ int global_stiffness_assemble_dense(const Node3D *nodes,
                                     int nz_cells,
                                     double *K);
 
+/*
+ * Assemble the global stiffness matrix into a COO sparse structure.
+ *
+ * This is the sparse counterpart of global_stiffness_assemble_dense().
+ * The caller must have already initialised *coo with sparse_coo_create().
+ * Duplicate (row,col) entries are allowed; they will be summed when the COO
+ * is converted to CSR. The existing error codes apply.
+ *
+ * Requires: #include "sparse_matrix.h"
+ */
+#include "sparse_matrix.h"
+
+int global_stiffness_assemble_sparse_coo(const Node3D *nodes,
+                                          int node_count,
+                                          double xmin,
+                                          double xmax,
+                                          double ymin,
+                                          double ymax,
+                                          double zmin,
+                                          double zmax,
+                                          int nx_cells,
+                                          int ny_cells,
+                                          int nz_cells,
+                                          SparseCOO *coo);
+
 #endif

@@ -1,6 +1,7 @@
 #include "lagrange_system.h"
 
 #include <stddef.h>
+#include <stdlib.h>
 
 static void zero_augmented_system(double *A_aug, double *b_aug, int total_size)
 {
@@ -65,6 +66,75 @@ int lagrange_assemble_augmented_system_dense(const double *K,
 
             A_aug[(node * total_size) + aug_row] = value;
             A_aug[(aug_row * total_size) + node] = value;
+        }
+    }
+
+    return LAGRANGE_SYSTEM_OK;
+}
+
+/*
+ * Sparse COO variant of the augmented Lagrange system assembler.
+ *
+ * The K block is copied from K_coo (indices are unchanged — it occupies
+ * rows/cols 0..node_count-1 in the augmented system). The G and G^T blocks
+ * are inserted from the dense G matrix with column offset node_count.
+ * Duplicate (row,col) entries are accumulated and summed at CSR conversion.
+ */
+int lagrange_assemble_augmented_sparse_coo(const SparseCOO *K_coo,
+                                           const double *F,
+                                           int node_count,
+                                           const double *G,
+                                           const double *q,
+                                           int constraint_count,
+                                           SparseCOO *A_aug_coo,
+                                           double *b_aug)
+{
+    int e;
+    int c;
+    int n;
+
+    if (K_coo == NULL || F == NULL || G == NULL || q == NULL ||
+        A_aug_coo == NULL || b_aug == NULL ||
+        node_count <= 0 || constraint_count <= 0) {
+        return LAGRANGE_SYSTEM_INVALID_ARGUMENT;
+    }
+
+    /* b_aug = [F; q] */
+    for (int i = 0; i < node_count; ++i) {
+        b_aug[i] = F[i];
+    }
+    for (c = 0; c < constraint_count; ++c) {
+        b_aug[node_count + c] = q[c];
+    }
+
+    /* K block: copy COO entries verbatim (already in rows/cols 0..node_count-1) */
+    for (e = 0; e < K_coo->count; ++e) {
+        const int rc = sparse_coo_add(A_aug_coo,
+                                      K_coo->row[e],
+                                      K_coo->col[e],
+                                      K_coo->val[e]);
+        if (rc != SPARSE_OK) {
+            return LAGRANGE_SYSTEM_ALLOCATION_FAILED;
+        }
+    }
+
+    /* G and G^T blocks */
+    for (c = 0; c < constraint_count; ++c) {
+        for (n = 0; n < node_count; ++n) {
+            const double val = G[c * node_count + n];
+            int rc;
+
+            /* G^T: A_aug[n, node_count+c] */
+            rc = sparse_coo_add(A_aug_coo, n, node_count + c, val);
+            if (rc != SPARSE_OK) {
+                return LAGRANGE_SYSTEM_ALLOCATION_FAILED;
+            }
+
+            /* G: A_aug[node_count+c, n] */
+            rc = sparse_coo_add(A_aug_coo, node_count + c, n, val);
+            if (rc != SPARSE_OK) {
+                return LAGRANGE_SYSTEM_ALLOCATION_FAILED;
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 #include "global_stiffness.h"
 
 #include "gauss.h"
+#include "sparse_matrix.h"
 #include "stiffness.h"
 
 #include <stddef.h>
@@ -105,6 +106,106 @@ int global_stiffness_assemble_dense(const Node3D *nodes,
                     const int col = local_entries[entry].col_node;
 
                     K[(row * node_count) + col] += local_entries[entry].value;
+                }
+            }
+        }
+    }
+
+    free(local_entries);
+    return GLOBAL_STIFFNESS_OK;
+}
+
+/*
+ * Sparse COO variant: reuses the same cell-loop logic; each local entry is
+ * appended to the COO instead of being scatter-added into a dense array.
+ * Duplicate (row,col) pairs accumulate naturally and are summed at CSR
+ * conversion time (sparse_coo_to_csr).
+ */
+int global_stiffness_assemble_sparse_coo(const Node3D *nodes,
+                                          int node_count,
+                                          double xmin,
+                                          double xmax,
+                                          double ymin,
+                                          double ymax,
+                                          double zmin,
+                                          double zmax,
+                                          int nx_cells,
+                                          int ny_cells,
+                                          int nz_cells,
+                                          SparseCOO *coo)
+{
+    int max_local_entries;
+    StiffnessEntry *local_entries = NULL;
+    double dx;
+    double dy;
+    double dz;
+
+    if (nodes == NULL || coo == NULL || node_count <= 0) {
+        return GLOBAL_STIFFNESS_INVALID_ARGUMENT;
+    }
+
+    if (xmin >= xmax || ymin >= ymax || zmin >= zmax) {
+        return GLOBAL_STIFFNESS_INVALID_DOMAIN;
+    }
+
+    if (nx_cells <= 0 || ny_cells <= 0 || nz_cells <= 0) {
+        return GLOBAL_STIFFNESS_INVALID_CELLS;
+    }
+
+    for (int i = 0; i < node_count; ++i) {
+        if (nodes[i].support_radius <= 0.0) {
+            return GLOBAL_STIFFNESS_INVALID_SUPPORT_RADIUS;
+        }
+    }
+
+    max_local_entries = GAUSS_LEGENDRE_ORDER2_CUBE_POINTS * node_count * node_count;
+    dx = (xmax - xmin) / (double)nx_cells;
+    dy = (ymax - ymin) / (double)ny_cells;
+    dz = (zmax - zmin) / (double)nz_cells;
+
+    local_entries = malloc((size_t)max_local_entries * sizeof(local_entries[0]));
+    if (local_entries == NULL) {
+        return GLOBAL_STIFFNESS_ALLOCATION_FAILED;
+    }
+
+    for (int ix = 0; ix < nx_cells; ++ix) {
+        const double cell_xmin = xmin + ((double)ix * dx);
+        const double cell_xmax = cell_xmin + dx;
+
+        for (int iy = 0; iy < ny_cells; ++iy) {
+            const double cell_ymin = ymin + ((double)iy * dy);
+            const double cell_ymax = cell_ymin + dy;
+
+            for (int iz = 0; iz < nz_cells; ++iz) {
+                int local_count = 0;
+                const double cell_zmin = zmin + ((double)iz * dz);
+                const double cell_zmax = cell_zmin + dz;
+                const int local_status = stiffness_assemble_cell(nodes,
+                                                                 node_count,
+                                                                 cell_xmin,
+                                                                 cell_xmax,
+                                                                 cell_ymin,
+                                                                 cell_ymax,
+                                                                 cell_zmin,
+                                                                 cell_zmax,
+                                                                 local_entries,
+                                                                 max_local_entries,
+                                                                 &local_count);
+
+                if (local_status != STIFFNESS_OK) {
+                    free(local_entries);
+                    return GLOBAL_STIFFNESS_LOCAL_ASSEMBLY_FAILED;
+                }
+
+                for (int entry = 0; entry < local_count; ++entry) {
+                    const int row = local_entries[entry].row_node;
+                    const int col = local_entries[entry].col_node;
+                    const int rc  = sparse_coo_add(coo, row, col,
+                                                   local_entries[entry].value);
+                    if (rc != SPARSE_OK) {
+                        free(local_entries);
+                        return GLOBAL_STIFFNESS_ALLOCATION_FAILED;
+                    }
                 }
             }
         }

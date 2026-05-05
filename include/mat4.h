@@ -22,4 +22,13 @@ void mat4_copy(const double src[4][4], double dst[4][4]);
 
 int mat4_solve(const double A[4][4], const double b[4], double x[4]);
 
+/*
+ * Estimate the condition number of A via the ratio of the largest to smallest
+ * absolute pivot produced by Gaussian elimination with partial pivoting.
+ * A ratio near 1 means A is well-conditioned; large ratios signal
+ * near-singularity. Returns MAT4_SINGULAR if any pivot is exactly zero.
+ * The result is written to *cond_estimate on success.
+ */
+int mat4_cond_estimate(const double A[4][4], double *cond_estimate);
+
 #endif
