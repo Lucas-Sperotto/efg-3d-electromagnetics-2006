@@ -120,10 +120,10 @@ Para cada ponto analisado, calcular:
 
 ### 3.2. Tarefas
 
-- [ ] Criar módulo de diagnóstico MLS.
-- [ ] Criar função para contar nós ativos no suporte de um ponto.
-- [ ] Criar função para avaliar estatísticas de conectividade em uma grade de pontos.
-- [ ] Criar teste unitário para conectividade em grade regular.
+- [x] Criar módulo de diagnóstico MLS.
+- [x] Criar função para contar nós ativos no suporte de um ponto.
+- [x] Criar função para avaliar estatísticas de conectividade em uma grade de pontos.
+- [x] Criar teste unitário para conectividade em grade regular.
 - [ ] Criar teste unitário para conectividade em nuvem não uniforme.
 - [ ] Criar app ou script que gere CSV com:
 
@@ -173,8 +173,8 @@ em pontos de integração e amostragem.
 
 ### 4.2. Tarefas
 
-- [ ] Criar função para montar `A(x)` sem calcular necessariamente as funções de forma.
-- [ ] Criar função para estimar condicionamento ou pelo menos detectar pivôs pequenos durante a eliminação.
+- [x] Criar função para montar `A(x)` sem calcular necessariamente as funções de forma.
+- [x] Criar função para estimar condicionamento ou pelo menos detectar pivôs pequenos durante a eliminação.
 - [ ] Registrar:
 
   - menor pivô;
@@ -231,14 +231,14 @@ values
 
 ### 5.3. Tarefas
 
-- [ ] Criar módulo `sparse_matrix`.
-- [ ] Implementar estrutura COO.
-- [ ] Permitir acumular entradas repetidas.
-- [ ] Implementar ordenação por `(row, col)`.
-- [ ] Implementar compressão de duplicatas.
-- [ ] Implementar conversão COO → CSR.
-- [ ] Implementar produto matriz-vetor CSR.
-- [ ] Criar testes unitários para:
+- [x] Criar módulo `sparse_matrix`.
+- [x] Implementar estrutura COO.
+- [x] Permitir acumular entradas repetidas.
+- [x] Implementar ordenação por `(row, col)`.
+- [x] Implementar compressão de duplicatas.
+- [x] Implementar conversão COO → CSR.
+- [x] Implementar produto matriz-vetor CSR.
+- [x] Criar testes unitários para:
 
   - inserção;
   - duplicatas;
@@ -262,13 +262,13 @@ sem remover a versão densa.
 
 ### 6.2. Tarefas
 
-- [ ] Criar `global_stiffness_assemble_sparse_coo(...)`.
-- [ ] Reutilizar a montagem local já existente.
-- [ ] Acumular entradas locais em COO.
-- [ ] Comprimir duplicatas.
-- [ ] Converter para CSR.
-- [ ] Comparar, em problemas pequenos, a matriz esparsa com a matriz densa.
-- [ ] Criar teste:
+- [x] Criar `global_stiffness_assemble_sparse_coo(...)`.
+- [x] Reutilizar a montagem local já existente.
+- [x] Acumular entradas locais em COO.
+- [x] Comprimir duplicatas.
+- [x] Converter para CSR.
+- [x] Comparar, em problemas pequenos, a matriz esparsa com a matriz densa.
+- [x] Criar teste:
 
   ```text
   sparse K ≈ dense K
@@ -291,10 +291,10 @@ Montar em formato esparso:
 
 ### 7.2. Tarefas
 
-- [ ] Criar montagem esparsa de `G`.
-- [ ] Criar montagem esparsa do sistema aumentado.
-- [ ] Comparar com o sistema denso em caso pequeno.
-- [ ] Criar teste:
+- [x] Criar montagem esparsa de `G`.
+- [x] Criar montagem esparsa do sistema aumentado.
+- [x] Comparar com o sistema denso em caso pequeno.
+- [x] Criar teste:
 
   ```text
   sparse A_aug * x ≈ dense A_aug * x
@@ -316,17 +316,17 @@ com matriz esparsa CSR.
 
 ### 8.2. Tarefas
 
-- [ ] Implementar GMRES básico sem precondicionador.
-- [ ] Criar teste com sistema pequeno conhecido.
-- [ ] Testar contra `dense_solve(...)` em sistema pequeno.
-- [ ] Registrar:
+- [x] Implementar GMRES básico sem precondicionador.
+- [x] Criar teste com sistema pequeno conhecido.
+- [x] Testar contra `dense_solve(...)` em sistema pequeno.
+- [x] Registrar:
 
   - número de iterações;
   - resíduo inicial;
   - resíduo final;
   - tolerância;
   - convergência ou falha.
-- [ ] Implementar versão reiniciada, por exemplo GMRES(m), se necessário.
+- [x] Implementar versão reiniciada, por exemplo GMRES(m), se necessário.
 - [ ] Avaliar necessidade de precondicionador.
 
 ### 8.3. Possíveis precondicionadores futuros
