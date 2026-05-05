@@ -44,6 +44,20 @@ A prioridade agora não é criar investigações secundárias, mas consolidar a 
 - [x] Script de estudo de refinamento regular.
 - [x] Script de plotagem da convergência.
 - [x] Primeira tentativa de nuvem não uniforme refinada no topo.
+- [x] Diagnóstico de conectividade MLS (`mls_diagnostic`).
+- [x] Estimativa de condicionamento da matriz de momento A(x).
+- [x] Módulo de matriz esparsa COO/CSR (`sparse_matrix`).
+- [x] Montagem esparsa da rigidez (`global_stiffness_assemble_sparse_coo`).
+- [x] Montagem esparsa do sistema aumentado (`lagrange_assemble_augmented_sparse_coo`).
+- [x] Solver iterativo GMRES reiniciado (`gmres_solve`).
+
+### 0.2. Evidências recentes (28/28 testes passando)
+
+- `test_mls_diagnostic` — conectividade e condicionamento em grade 3×3×3 e 5×5×5.
+- `test_sparse_matrix` — inserção, duplicatas, compressão, matvec CSR.
+- `test_sparse_global_stiffness` — sparse K ≈ dense K para 3×3×3 (tol 1e-10).
+- `test_lagrange_augmented_sparse` — sparse A_aug ≈ dense A_aug para 5×5 manual e 3×3×3 cube.
+- `test_gmres` — solução 5×5 conhecida + GMRES vs. solver denso no cubo 3×3×3.
 
 ---
 

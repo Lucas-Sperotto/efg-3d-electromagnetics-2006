@@ -41,18 +41,18 @@ Observações:
 
 ```text
 Preencher.
-````
+```
 
 ### 2. Comentários didáticos
 
 Verificar se há comentários suficientes sobre:
 
-* [ ] base MLS linear 3D;
-* [ ] cardinalidade mínima 4;
-* [ ] suporte nodal;
-* [ ] matriz de momento MLS;
-* [ ] sistema aumentado `[K G^T; G 0]`;
-* [ ] uso de GMRES.
+- [ ] base MLS linear 3D;
+- [ ] cardinalidade mínima 4;
+- [ ] suporte nodal;
+- [ ] matriz de momento MLS;
+- [ ] sistema aumentado `[K G^T; G 0]`;
+- [ ] uso de GMRES.
 
 Observações:
 
@@ -62,11 +62,11 @@ Preencher.
 
 ### 3. Documentação
 
-* [ ] TODO.md atualizado.
-* [ ] TEST_REPORT.md suficiente.
-* [ ] CODEX_IMPLEMENTATION_LOG.md suficiente.
-* [ ] Nuvens não uniformes continuam pausadas.
-* [ ] Próximo passo está claro.
+- [ ] TODO.md atualizado.
+- [ ] TEST_REPORT.md suficiente.
+- [ ] CODEX_IMPLEMENTATION_LOG.md suficiente.
+- [ ] Nuvens não uniformes continuam pausadas.
+- [ ] Próximo passo está claro.
 
 Observações:
 
@@ -76,15 +76,15 @@ Preencher.
 
 ## Pequenas correções feitas
 
-* Preencher.
+- Preencher.
 
 ## Problemas encontrados
 
-* Preencher.
+- Preencher.
 
 ## Riscos restantes
 
-* Preencher.
+- Preencher.
 
 ## Recomendação
 

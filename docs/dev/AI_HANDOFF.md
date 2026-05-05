@@ -155,12 +155,12 @@ solve_time_s
 
 Até validação do pipeline esparso, manter pausado:
 
-* nuvens não uniformes;
-* octree;
-* precondicionadores;
-* novos gráficos;
-* ajuste empírico de distribuição de nós;
-* reprodução estética final da figura.
+- nuvens não uniformes;
+- octree;
+- precondicionadores;
+- novos gráficos;
+- ajuste empírico de distribuição de nós;
+- reprodução estética final da figura.
 
 ## Fluxo recomendado
 

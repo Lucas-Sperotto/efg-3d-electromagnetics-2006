@@ -92,22 +92,22 @@ solve_time_s:
 
 ## Problemas encontrados
 
-* Preencher.
+- Preencher.
 
 ## Decisões tomadas
 
-* Preencher.
+- Preencher.
 
 ## Pendências deixadas para a próxima IA
 
-* Preencher.
+- Preencher.
 
 ## Recomendação para o Gemini
 
 Revisar:
 
-* clareza do app;
-* mensagens de relatório;
-* comentários didáticos;
-* consistência do TODO;
-* documentação dos resultados.
+- clareza do app;
+- mensagens de relatório;
+- comentários didáticos;
+- consistência do TODO;
+- documentação dos resultados.
