@@ -67,6 +67,15 @@ target_link_libraries(reproduce_cube_smoke
     efg_core
 )
 
+add_executable(reproduce_cube_nonuniform_smoke
+  apps/reproduce_cube_nonuniform_smoke.c
+)
+
+target_link_libraries(reproduce_cube_nonuniform_smoke
+  PRIVATE
+    efg_core
+)
+
 add_executable(test_gauss_cube
   apps/test_gauss_cube.c
 )
@@ -279,6 +288,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(smoke_test PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(reproduce_analytical_slice PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(reproduce_cube_smoke PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(reproduce_cube_nonuniform_smoke PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gauss_cube PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_dirichlet_constraints PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_cube_problem PRIVATE -Wall -Wextra -Wpedantic)
