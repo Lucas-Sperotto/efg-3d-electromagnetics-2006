@@ -227,11 +227,10 @@ int cube_generate_regular_nodes(double L,
  * Generate a first didactic non-uniform cloud inspired by the article's
  * denser distribution near upper edges and corners.
  *
- * The function starts from the regular base_n^3 grid, then adds a refined
- * top slab and additional strips close to the upper lateral edges. Duplicates
- * are removed by coordinate comparison with a small tolerance. As with the
- * regular generator, support_radius is left at zero so the support module can
- * assign d_mI later.
+ * The function starts from the regular base_n^3 grid, then adds a refined top
+ * face and layered upper-edge lines. Duplicates are removed by coordinate
+ * comparison with a small tolerance. As with the regular generator,
+ * support_radius is left at zero so the support module can assign d_mI later.
  */
 int cube_generate_top_refined_nodes(double L,
                                     int base_n,
@@ -265,7 +264,7 @@ int cube_generate_top_refined_nodes(double L,
         }
     }
 
-    for (int layer = 0; layer < refine_n; ++layer) {
+    for (int layer = 0; layer <= 1; ++layer) {
         const double z = top_refined_layer_coordinate(L, layer, refine_n);
 
         for (int ix = 0; ix < refine_n; ++ix) {
@@ -282,37 +281,54 @@ int cube_generate_top_refined_nodes(double L,
         }
     }
 
-    for (int layer = 0; layer < refine_n; ++layer) {
+    for (int layer = 2; layer < refine_n; ++layer) {
         const double z = top_refined_layer_coordinate(L, layer, refine_n);
+        const double edge_offset =
+            (0.25 * L * (double)layer) / (double)(refine_n - 1);
+        const double lower_offset = edge_offset;
+        const double upper_offset = L - edge_offset;
 
-        for (int offset_index = 0; offset_index < refine_n; ++offset_index) {
-            const double edge_offset =
-                (0.25 * L * (double)offset_index) / (double)(refine_n - 1);
+        for (int t_index = 0; t_index < refine_n; ++t_index) {
+            const double t = grid_coordinate(L, t_index, refine_n);
 
-            for (int t_index = 0; t_index < refine_n; ++t_index) {
-                const double t = grid_coordinate(L, t_index, refine_n);
-                const double lower_offset = edge_offset;
-                const double upper_offset = L - edge_offset;
+            status = append_unique_node(nodes, max_nodes, &output_count, t, 0.0, z, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
+            }
 
-                status = append_unique_node(nodes, max_nodes, &output_count, t, lower_offset, z, L);
-                if (status != CUBE_PROBLEM_OK) {
-                    return status;
-                }
+            status = append_unique_node(nodes, max_nodes, &output_count, t, L, z, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
+            }
 
-                status = append_unique_node(nodes, max_nodes, &output_count, t, upper_offset, z, L);
-                if (status != CUBE_PROBLEM_OK) {
-                    return status;
-                }
+            status = append_unique_node(nodes, max_nodes, &output_count, 0.0, t, z, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
+            }
 
-                status = append_unique_node(nodes, max_nodes, &output_count, lower_offset, t, z, L);
-                if (status != CUBE_PROBLEM_OK) {
-                    return status;
-                }
+            status = append_unique_node(nodes, max_nodes, &output_count, L, t, z, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
+            }
 
-                status = append_unique_node(nodes, max_nodes, &output_count, upper_offset, t, z, L);
-                if (status != CUBE_PROBLEM_OK) {
-                    return status;
-                }
+            status = append_unique_node(nodes, max_nodes, &output_count, t, lower_offset, z, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
+            }
+
+            status = append_unique_node(nodes, max_nodes, &output_count, t, upper_offset, z, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
+            }
+
+            status = append_unique_node(nodes, max_nodes, &output_count, lower_offset, t, z, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
+            }
+
+            status = append_unique_node(nodes, max_nodes, &output_count, upper_offset, t, z, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
             }
         }
     }
