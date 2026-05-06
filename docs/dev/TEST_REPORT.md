@@ -1,5 +1,83 @@
 # TEST_REPORT — Relatório de testes e execuções
 
+## Visualização do plano x = 5.33
+
+Data: 2026-05-05 22:39:02 -03
+
+Comando:
+
+```bash
+python3 scripts/plot_cube_plane.py
+```
+
+Resultado:
+
+```text
+input CSV: data/output/cube_plane_x_5_33_refine15.csv
+points: 10201
+grid shape: 101 y samples x 101 z samples
+V_num contour: data/output/figures/cube_plane_x_5_33_V_num_contour.png
+V_exact contour: data/output/figures/cube_plane_x_5_33_V_exact_contour.png
+abs_error contour: data/output/figures/cube_plane_x_5_33_abs_error_contour.png
+comparison: data/output/figures/cube_plane_x_5_33_comparison.png
+metrics: data/output/figures/cube_plane_x_5_33_metrics.txt
+metrics CSV: data/output/figures/cube_plane_x_5_33_metrics.csv
+plane max abs error: 9.9999994786795359
+plane mean abs error: 0.042493315964941686
+plane relative error: 0.081894083339740326
+interior max abs error: 4.3657975314819284
+interior mean abs error: 0.03367838888223184
+interior relative error: 0.045826314858457826
+```
+
+Arquivos gerados:
+
+```text
+data/output/figures/cube_plane_x_5_33_V_num_contour.png
+data/output/figures/cube_plane_x_5_33_V_exact_contour.png
+data/output/figures/cube_plane_x_5_33_abs_error_contour.png
+data/output/figures/cube_plane_x_5_33_comparison.png
+data/output/figures/cube_plane_x_5_33_metrics.txt
+data/output/figures/cube_plane_x_5_33_metrics.csv
+```
+
+Conteúdo do arquivo de métricas:
+
+```text
+cube_plane_x_5_33_metrics
+input_csv: data/output/cube_plane_x_5_33_refine15.csv
+output_dir: data/output/figures
+points: 10201
+grid_y_count: 101
+grid_z_count: 101
+x_plane_min: 5.3300000000000001
+x_plane_max: 5.3300000000000001
+y_min: 0
+y_max: 10
+z_min: 0
+z_max: 10
+V_num_min: -0.48030322475030801
+V_num_max: 10.03264427824312
+V_exact_min: 0
+V_exact_max: 11.859907587538387
+plane_max_abs_error: 9.9999994786795359
+plane_mean_abs_error: 0.042493315964941686
+plane_relative_error: 0.081894083339740326
+interior_points: 9801
+interior_max_abs_error: 4.3657975314819284
+interior_mean_abs_error: 0.03367838888223184
+interior_relative_error: 0.045826314858457826
+```
+
+Conclusão:
+
+```text
+PASSOU
+```
+
+Observação: build e CTest não foram repetidos nesta rodada porque não houve
+alteração em solver, montagem, GMRES ou app C.
+
 ## Data
 
 2026-05-05 22:24:42 -03

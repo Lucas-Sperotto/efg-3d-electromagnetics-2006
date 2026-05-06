@@ -406,12 +406,18 @@ x = 5.33
   x,y,z,V_num,V_exact,abs_error
   ```
 
-- [ ] Criar script Python para plotar:
+- [x] Criar script Python para plotar:
 
   - solução numérica;
   - solução analítica;
   - erro absoluto;
   - mapa de contorno.
+
+  Concluído em `scripts/plot_cube_plane.py`, gerando figuras e métricas em:
+
+  ```text
+  data/output/figures/
+  ```
 
 - [ ] Comparar erro máximo com valor reportado no artigo.
 - [ ] Documentar divergências.

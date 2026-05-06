@@ -1,5 +1,91 @@
 # CODEX_IMPLEMENTATION_LOG — Registro de implementação
 
+## 2026-05-05 22:39:02 -03 — Visualização do plano x = 5.33
+
+Objetivo da rodada:
+
+```text
+Criar script Python para visualizar o CSV do plano x = 5.33 e gerar figuras
+de contorno comparáveis à Figura 3 do artigo.
+```
+
+Arquivos modificados:
+
+- `scripts/plot_cube_plane.py`
+- `docs/dev/CODEX_IMPLEMENTATION_LOG.md`
+- `docs/dev/TEST_REPORT.md`
+- `TODO.md`
+
+Arquivos gerados em `data/output/figures/`:
+
+- `cube_plane_x_5_33_V_num_contour.png`
+- `cube_plane_x_5_33_V_exact_contour.png`
+- `cube_plane_x_5_33_abs_error_contour.png`
+- `cube_plane_x_5_33_comparison.png`
+- `cube_plane_x_5_33_metrics.txt`
+- `cube_plane_x_5_33_metrics.csv`
+
+Resumo técnico:
+
+- Adicionado `scripts/plot_cube_plane.py`.
+- O script usa `pandas`, `numpy` e `matplotlib`, sem `seaborn`.
+- O script valida existência do CSV e colunas obrigatórias:
+  `x,y,z,V_num,V_exact,abs_error`.
+- Os dados são reorganizados em grade regular `y-z` com `y` no eixo horizontal
+  e `z` no eixo vertical.
+- São geradas três figuras individuais de contorno e uma figura comparativa.
+- Na figura comparativa, `V_num` e `V_exact` usam a mesma escala de cor.
+- As métricas do plano completo e do interior, com `0 < y < L` e `0 < z < L`,
+  são salvas em `cube_plane_x_5_33_metrics.txt`.
+- As mesmas métricas também são salvas em CSV para atender à regra geral de
+  saída numérica do projeto.
+- Nenhuma alteração foi feita em solver, montagem esparsa, GMRES ou
+  `apps/reproduce_cube_sparse.c`.
+
+Comandos executados:
+
+```bash
+python3 -m py_compile scripts/plot_cube_plane.py
+python3 scripts/plot_cube_plane.py
+```
+
+Saída principal:
+
+```text
+input CSV: data/output/cube_plane_x_5_33_refine15.csv
+points: 10201
+grid shape: 101 y samples x 101 z samples
+V_num contour: data/output/figures/cube_plane_x_5_33_V_num_contour.png
+V_exact contour: data/output/figures/cube_plane_x_5_33_V_exact_contour.png
+abs_error contour: data/output/figures/cube_plane_x_5_33_abs_error_contour.png
+comparison: data/output/figures/cube_plane_x_5_33_comparison.png
+metrics: data/output/figures/cube_plane_x_5_33_metrics.txt
+metrics CSV: data/output/figures/cube_plane_x_5_33_metrics.csv
+plane max abs error: 9.9999994786795359
+plane mean abs error: 0.042493315964941686
+plane relative error: 0.081894083339740326
+interior max abs error: 4.3657975314819284
+interior mean abs error: 0.03367838888223184
+interior relative error: 0.045826314858457826
+```
+
+Problemas encontrados:
+
+- Nenhuma falha na leitura do CSV.
+- Nenhuma lacuna na grade `101x101`.
+- O erro máximo do plano permanece dominado pelas bordas, por isso as métricas
+  internas foram registradas separadamente.
+
+Próxima etapa recomendada:
+
+```text
+Comparar visualmente os contornos gerados com a Figura 3 do artigo e, se
+necessário, ajustar apenas o script de visualização para níveis de contorno
+iguais aos da publicação.
+```
+
+---
+
 ## Data
 
 2026-05-05 22:24:42 -03
