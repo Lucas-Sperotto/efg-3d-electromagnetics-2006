@@ -121,22 +121,15 @@ static int run_case(const char *label,
 
     /* -------------------------------------------------- MLS diagnostic */
     /*
-     * Evaluate connectivity at Gauss cell centres.  For nx_cells cells over
-     * [0,L], the centres lie at (i + 0.5) * L / nx_cells for i = 0..nx_cells-1.
-     * mls_connectivity_stats_uniform_grid places nx points uniformly in
-     * [xmin, xmax], so setting xmin = half_cell and xmax = L - half_cell
-     * gives exactly the cell centres.
+     * Evaluate connectivity at the nx_cells × ny_cells × nz_cells Gauss cell
+     * centres. mls_connectivity_stats_uniform_grid with [xmin=0, xmax=L, n]
+     * places points at (ix + 0.5) * L / n, which are exactly the cell centres.
      */
-    {
-        double hx = 0.5 * L / (double)nx_cells;
-        double hy = 0.5 * L / (double)ny_cells;
-        double hz = 0.5 * L / (double)nz_cells;
-        mls_connectivity_stats_uniform_grid(nodes, node_count,
-                                            hx, L - hx, nx_cells,
-                                            hy, L - hy, ny_cells,
-                                            hz, L - hz, nz_cells,
-                                            &diag);
-    }
+    mls_connectivity_stats_uniform_grid(nodes, node_count,
+                                        0.0, L, nx_cells,
+                                        0.0, L, ny_cells,
+                                        0.0, L, nz_cells,
+                                        &diag);
 
     /* ----------------------------------------- dense K and G assembly */
 
