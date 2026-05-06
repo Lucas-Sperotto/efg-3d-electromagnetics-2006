@@ -1,5 +1,206 @@
 # CODEX_IMPLEMENTATION_LOG — Registro de implementação
 
+## 2026-05-06 — Análise regional da norma integral da Eq. (16)
+
+Objetivo da rodada:
+
+```text
+Avaliar a norma integral da Eq. (16) em sub-regiões do cubo refine15 usando a
+solução GMRES já calculada, montagem Gauss ordem 2 e norma Gauss ordem 6.
+```
+
+Arquivos modificados:
+
+- `apps/reproduce_cube_sparse.c` — nova CLI `--error-region-study`, solução
+  única do caso `refine15` e varredura regional em uma passagem de Gauss ordem 6.
+- `docs/dev/TEST_REPORT.md` — resultados regionais e identificação das regiões
+  que dominam o erro.
+- `docs/dev/CODEX_IMPLEMENTATION_LOG.md` — este registro.
+- `TODO.md` — item de estudo regional marcado como implementado.
+
+Resultado principal:
+
+| Região | Eq.16 integral | Fração do numerador global |
+| --- | ---: | ---: |
+| full_domain | 9.180453e-02 | 100.00 % |
+| core_delta_1_0 | 1.532545e-02 | 0.97 % |
+| central_box | 1.027466e-02 | 0.14 % |
+| upper_layer | 1.145645e-01 | 98.24 % |
+| upper_edge_bands | 2.574390e-01 | 97.14 % |
+| upper_face_interior | 1.354568e-02 | 1.10 % |
+
+CSV:
+
+- `data/output/error_region_integral_refine15.csv`
+
+Comandos executados:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case refine15 --error-region-study
+git diff --check
+```
+
+Conclusão:
+
+```text
+PASSOU. O erro global é dominado pelas bandas de aresta na camada superior, não
+pelo núcleo do domínio nem pelo interior aberto da face superior.
+```
+
+---
+
+## 2026-05-06 — Estudo de ordem de integração Gauss-Legendre
+
+Objetivo da rodada:
+
+```text
+Criar um estudo controlado para separar a ordem de quadratura usada na montagem
+de K da ordem usada na norma integral da Eq. (16), mantendo Gauss 2x2x2 como
+padrão do projeto.
+```
+
+Arquivos modificados:
+
+- `include/gauss.h` e `src/gauss.c` — regras Gauss-Legendre 1D para ordens 1..8
+  e produto tensorial 3D em células físicas; wrappers ordem 2 preservados.
+- `include/stiffness.h` e `src/stiffness.c` — nova montagem local com ordem de
+  quadratura explícita, mantendo `stiffness_assemble_cell()` como ordem 2.
+- `include/global_stiffness.h` e `src/global_stiffness.c` — montagem global com
+  ordem explícita e buffer local redimensionável por célula.
+- `include/error_norm.h` e `src/error_norm.c` — Eq. (16) com ordem de norma
+  explícita via `relative_error_norm_domain_integral_with_order()`.
+- `apps/reproduce_cube_sparse.c` — CLI `--integration-study norm|assembly` e
+  geração dos CSVs de sensibilidade.
+- `tests/test_gauss.c` — testes de pesos 1D/3D, volume físico, função linear e
+  melhoria para polinômio quadrático.
+
+Resultados principais:
+
+| Estudo | Resultado |
+| --- | --- |
+| Norma, solução fixa | `norm_order=5..8` estabiliza em torno de `9.18e-02`. |
+| Montagem, norma ordem 6 | `assembly_order=2..5` estabiliza em torno de `9.20e-02`. |
+| Montagem ordem 1 | Converge, mas erro integral pior: `9.842689e-02`. |
+
+CSVs:
+
+- `data/output/integration_order_norm_sensitivity_refine15.csv`
+- `data/output/integration_order_solution_sensitivity_refine15.csv`
+
+Comandos executados:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case refine15 --integration-study norm
+./build/reproduce_cube_sparse --case refine15 --integration-study assembly
+```
+
+Conclusão:
+
+```text
+PASSOU. Ordem 2 permanece o padrão, mas o estudo registra a norma Eq. (16) com
+ordem de avaliação independente e confirma estabilidade em ordens altas.
+```
+
+---
+
+## 2026-05-06 — Norma relativa integral da Eq. (16)
+
+Objetivo da rodada:
+
+```text
+Implementar a métrica principal de erro como a integral de domínio da Eq. (16),
+avaliando V_EFG = Σ Φ_I u_I nos pontos de Gauss das mesmas células usadas na
+montagem.
+```
+
+Arquivos modificados:
+
+- `include/error_norm.h` — nova API `relative_error_norm_domain_integral` e
+  estrutura `RelativeErrorDomainResult`.
+- `src/error_norm.c` — loop de células, quadratura Gauss 2x2x2, avaliação MLS
+  de `V_EFG` e acumulação das integrais da Eq. (16).
+- `apps/reproduce_cube_sparse.c` — `relative_error_global` passa a ser Eq. (16);
+  a métrica antiga fica em `relative_error_discrete_global`.
+- `tests/test_error_norm.c` — testes com campos constantes, reprodução linear,
+  denominador zero e falha MLS.
+
+Resultados:
+
+| Caso | Eq.16 domain | Discrete global | Discrete interior |
+| --- | ---: | ---: | ---: |
+| regular refine15 | 8.217121e-02 | 2.365161e-02 | 2.801970e-02 |
+| nonuniform_refine | 8.035461e-02 | 3.284785e-02 | 2.776750e-02 |
+
+Conclusão:
+
+```text
+PASSOU. A variável relative_error_global agora segue a integral da Eq. (16).
+```
+
+---
+
+## 2026-05-06 — Solver LAPACK denso opcional para validação
+
+Objetivo da rodada:
+
+```text
+Adicionar um solver direto denso opcional baseado em LAPACK dgesv para validar
+o sistema aumentado esparso [K G^T; G 0] contra uma biblioteca consolidada.
+```
+
+Arquivos modificados:
+
+- `CMakeLists.txt` — `find_package(LAPACK QUIET)`, definição `EFG_HAVE_LAPACK`
+  e link opcional de LAPACK.
+- `include/lapack_dense_solver.h` e `include/efg/lapack_dense_solver.h` —
+  API do solver opcional e estatísticas de execução.
+- `src/lapack_dense_solver.c` — conversão CSR -> dense column-major e chamada
+  a `dgesv`.
+- `tests/test_lapack_dense_solver.c` — teste de conversão CSR -> dense e solve
+  5x5 quando LAPACK está disponível.
+- `apps/reproduce_cube_sparse.c` — nova CLI `--solver gmres|lapack-dense`,
+  métricas LAPACK e comparação GMRES/LAPACK.
+
+Resumo técnico:
+
+- O GMRES atual foi preservado.
+- A montagem esparsa validada não foi alterada.
+- O solver LAPACK trabalha depois da conversão COO -> CSR já existente.
+- Quando `--solver lapack-dense` é usado, a solução de saída vem de `dgesv` e
+  o GMRES é rodado como comparação para registrar a diferença relativa.
+- Quando LAPACK não é encontrado pelo CMake, o projeto continua compilando e a
+  função retorna `LAPACK_DENSE_SOLVER_UNAVAILABLE`.
+
+Resultados:
+
+| Caso | Dif. GMRES/LAPACK | Residual LAPACK | Erro interior 3D |
+| --- | ---: | ---: | ---: |
+| regular refine15 | 8.285314e-10 | 1.722711e-13 | 2.801970e-02 |
+| nonuniform_refine | 3.368672e-08 | 1.975243e-13 | 2.776750e-02 |
+
+Comandos executados:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case refine15 --solver gmres
+./build/reproduce_cube_sparse --case refine15 --solver lapack-dense
+./build/reproduce_cube_sparse --case nonuniform_refine --solver gmres
+./build/reproduce_cube_sparse --case nonuniform_refine --solver lapack-dense
+```
+
+Conclusão:
+
+```text
+PASSOU. As soluções GMRES e LAPACK são próximas nos dois casos-alvo.
+```
+
+---
+
 ## 2026-05-06 — Precondicionador Jacobi para GMRES (experimento)
 
 Objetivo da rodada:

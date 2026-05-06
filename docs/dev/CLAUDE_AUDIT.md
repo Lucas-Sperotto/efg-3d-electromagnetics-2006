@@ -221,13 +221,18 @@ cada `DirichletPoint`.
 
 ### 3.5. Condições de contorno do cubo
 
-Implementado em `cube_generate_dirichlet_points_from_nodes`:
+**[OBSOLETO: Esta seção descreve a política de Dirichlet anterior. A política atual é documentada em `docs/figure3_reproduction.md` e `TODO.md`.]**
 
-- `z = L` → `value = V0 = 10`  (face superior)
-- todas as outras faces → `value = 0`
-- face superior tem prioridade sobre arestas superiores
+A política de Dirichlet anterior, implementada em `cube_generate_dirichlet_points_from_nodes`,
+aplicava `V = V0 = 10` na face superior (`z = L`) e `V = 0` nas outras faces,
+com a face superior tendo prioridade sobre as arestas superiores.
 
-Correto segundo `docs/06_condicoes_de_contorno_e_lagrange.md`.
+**Política atual (após 2026-05-06):**
+`V = V0` somente no interior aberto da face `z = L`.
+`V = 0` nas demais superfícies, incluindo arestas e cantos superiores.
+Esta política torna a fronteira numérica compatível com a série analítica.
+
+---
 
 ---
 
@@ -293,38 +298,34 @@ com `n, m` ímpares. Correto.
 
 ### 5.2. Métrica de erro implementada
 
-A aplicação usa norma L2 discreta em grade de amostragem:
-
-```
-e_global  = sqrt( Σ (v_num - v_exact)^2 / Σ v_exact^2 )
-e_interior = idem, excluindo pontos de contorno
-```
-
-O artigo usa a integral contínua (Eq. 16):
+A métrica principal `relative_error_global` usa a integral de domínio da Eq. 16:
 
 ```
 e = sqrt( ∫(V_EFG - V_exact)^2 dΩ / ∫ V_exact^2 dΩ )
 ```
 
-A métrica discreta é uma aproximação razoável. Não são comparáveis numericamente
-com os resultados do artigo, mas a tendência de convergência é válida.
+O valor é aproximado com as mesmas células de integração e quadratura Gauss
+2x2x2 usadas na montagem. A aplicação mantém métricas discretas apenas como
+diagnóstico:
+
+```
+relative_error_discrete_global = sqrt( Σ (v_num - v_exact)^2 / Σ v_exact^2 )
+relative_error_interior = idem, excluindo pontos de contorno
+```
 
 ### 5.3. Max abs error ≈ V0 é ESPERADO e não é bug
 
-O erro máximo absoluto ≈ 10 = V0 ocorre nos pontos de aresta superior do cubo,
-como (0, y, L) ou (L, y, L), onde as condições de Dirichlet são contraditórias:
+**[OBSOLETO: Esta explicação se refere à política de Dirichlet anterior, onde as condições de contorno eram contraditórias nas arestas superiores. A política atual (V=0 nas arestas superiores) resolve essa contradição. Para a explicação do erro máximo atual, consulte `docs/figure3_reproduction.md`, Seção 5.]**
 
-- Face `z=L` impõe `V = V0`
-- Faces `x=0` e `x=L` impõem `V = 0`
+A explicação anterior para o `max_abs_error ≈ V0` era que ele ocorria nos pontos de aresta superior do cubo (e.g., (0, y, L) ou (L, y, L)), onde as condições de Dirichlet eram contraditórias: a face `z=L` impunha `V = V0`, enquanto as faces `x=0` e `x=L` impunham `V = 0`. O EFG com multiplicadores de Lagrange impunha `V = V0` na face superior com prioridade, enquanto a série analítica resultava em `V_exact = 0` nesses pontos.
 
-A série analítica resolve essa contradição via continuidade: em (0, y, L),
-`sin(n*pi*0/L) = 0` para todo n, portanto a série retorna V_exact = 0.
-O EFG com multiplicadores de Lagrange impõe `V = V0` na face superior COM
-PRIORIDADE, de modo que o ponto (0, y, L) recebe `V_d = V0` na montagem.
+Com a **nova política de Dirichlet** (implementada em 2026-05-06), as arestas e cantos superiores herdam `V = 0` das paredes laterais, e `V = V0` é aplicado somente no interior aberto da face `z = L`. Isso torna a fronteira numérica compatível com a série analítica.
 
-Esta discrepância é intrínseca ao benchmark e não representa erro de implementação.
-**O indicador relevante é o erro relativo interior**, que mede apenas pontos
-estritamente dentro do cubo.
+Consequentemente, o `max_abs_error` 3D para o caso `15x15x15` caiu de `~V0` para `4.642650e-01`. No plano `x=5.33`, o `plane_max_abs_error` ainda é alto (`8.8854 V`), mas a explicação para isso agora reside no fenômeno de Gibbs da série analítica truncada e na natureza não interpolante do MLS nas regiões de forte gradiente e descontinuidade de contorno, conforme detalhado em `docs/figure3_reproduction.md`, Seção 5.
+
+**O indicador relevante continua sendo o erro relativo interior**, que mede apenas pontos estritamente dentro do cubo e longe das descontinuidades de contorno.
+
+---
 
 ### 5.4. Resultados medidos
 

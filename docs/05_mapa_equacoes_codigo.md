@@ -21,7 +21,7 @@ TODO: a numeração das equações ainda precisa ser revisada manualmente contra
 | Eq. (10), conforme citado em `docs/03_resultados_numericos.md` | Função peso spline cúbica | `src/weight.c` | `weight_cubic_spline()` | Implementado. TODO: revisar numeração porque há conflito com a numeração provável de MLS. |
 | Eq. (11), conforme citado em `docs/03_resultados_numericos.md` | Função peso quadrática | `src/weight.c` | `weight_quadratic()` | Implementado. TODO: revisar numeração contra o artigo original. |
 | Eqs. (13)-(15) | Solução analítica do cubo por série dupla | `src/analytical.c` | `analytical_potential_cube()` | Implementado com truncamento finito. |
-| Eq. (16) | Norma relativa do erro | `src/error_norm.c` | `error_norm_relative_l2()` | TODO; depende de campos numéricos e regra de integração. |
+| Eq. (16) | Norma relativa do erro por integral de domínio | `src/error_norm.c` | `relative_error_norm_domain_integral()` / `relative_error_norm_domain_integral_with_order()` | Implementado com Gauss 2x2x2 como padrão e ordem 1..8 explícita para estudos de sensibilidade. |
 | Referência [7] | Solução do sistema não definido positivo por GMRES | `src/gmres.c` | `gmres_solve()` | TODO; não implementar antes da interface de matriz/vetor. |
 
 ---

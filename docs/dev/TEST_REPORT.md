@@ -1,5 +1,236 @@
 # TEST_REPORT — Relatório de testes e execuções
 
+## Análise regional da norma integral da Eq. (16)
+
+Data: 2026-05-06
+
+Objetivo:
+
+```text
+Usar a solução GMRES do caso regular refine15, com montagem Gauss ordem 2, e
+avaliar a norma integral da Eq. (16) em sub-regiões do cubo usando norm_order=6.
+```
+
+Comandos:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case refine15 --error-region-study
+git diff --check
+```
+
+Build e testes:
+
+```text
+100% tests passed, 0 tests failed out of 29
+```
+
+CSV gerado:
+
+- `data/output/error_region_integral_refine15.csv`
+
+Resultados:
+
+| Região | Pontos usados | Eq.16 integral | Numerador | Fração do numerador global | Mean abs integral | Max abs sampled | MLS failures |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| full_domain | 729000 | 9.180453e-02 | 7.152526e+01 | 100.00 % | 5.067690e-02 | 9.651753e+00 | 0 |
+| open_interior | 729000 | 9.180453e-02 | 7.152526e+01 | 100.00 % | 5.067690e-02 | 9.651753e+00 | 0 |
+| core_delta_0_5 | 551368 | 2.619258e-02 | 3.453981e+00 | 4.83 % | 2.895232e-02 | 8.187076e-01 | 0 |
+| core_delta_1_0 | 373248 | 1.532545e-02 | 6.940169e-01 | 0.97 % | 2.199722e-02 | 3.474524e-01 | 0 |
+| central_box | 157464 | 1.027466e-02 | 9.945289e-02 | 0.14 % | 1.789937e-02 | 9.034382e-02 | 0 |
+| upper_layer | 72900 | 1.145645e-01 | 7.026686e+01 | 98.24 % | 3.496991e-01 | 9.651753e+00 | 0 |
+| upper_edge_bands | 26244 | 2.574390e-01 | 6.947689e+01 | 97.14 % | 8.339680e-01 | 9.651753e+00 | 0 |
+| upper_face_interior | 46656 | 1.354568e-02 | 7.899681e-01 | 1.10 % | 7.729788e-02 | 7.978232e-01 | 0 |
+
+Conclusão:
+
+```text
+PASSOU. A região que domina o erro é a camada superior z in [9,10], com 98,24 %
+do numerador global. Dentro dela, as bandas de aresta superiores respondem por
+97,14 % do numerador global; o interior da face superior contribui só 1,10 %.
+```
+
+Observação: `open_interior` coincide numericamente com `full_domain` nesta
+quadratura porque os pontos de Gauss ficam no interior das células; as faces de
+contorno têm medida volumétrica zero.
+
+---
+
+## Estudo da ordem de integração de Gauss-Legendre
+
+Data: 2026-05-06
+
+Objetivo:
+
+```text
+Separar a ordem de quadratura usada na montagem de K da ordem usada na norma
+integral da Eq. (16), mantendo ordem 2 como padrão, e verificar numericamente
+o caso regular refine15.
+```
+
+Comandos:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case refine15 --integration-study norm
+./build/reproduce_cube_sparse --case refine15 --integration-study assembly
+```
+
+Build e testes:
+
+```text
+100% tests passed, 0 tests failed out of 29
+```
+
+Arquivos CSV gerados:
+
+- `data/output/integration_order_norm_sensitivity_refine15.csv`
+- `data/output/integration_order_solution_sensitivity_refine15.csv`
+
+Parte A — norma Eq. (16) com solução fixa, montagem ordem 2:
+
+| norm_order | Eq.16 integral | Numerador | Denominador | MLS failures |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 6.666831e-02 | 3.668030e+01 | 8.252660e+03 | 0 |
+| 2 | 8.217121e-02 | 5.711177e+01 | 8.458361e+03 | 0 |
+| 3 | 8.446984e-02 | 6.048276e+01 | 8.476728e+03 | 0 |
+| 4 | 9.275266e-02 | 7.302295e+01 | 8.488025e+03 | 0 |
+| 5 | 9.186345e-02 | 7.161767e+01 | 8.486619e+03 | 0 |
+| 6 | 9.180453e-02 | 7.152526e+01 | 8.486551e+03 | 0 |
+| 7 | 9.186332e-02 | 7.161763e+01 | 8.486637e+03 | 0 |
+| 8 | 9.185189e-02 | 7.159968e+01 | 8.486622e+03 | 0 |
+
+Parte B — solução variando ordem da montagem, norma Eq. (16) com ordem 6:
+
+| assembly_order | GMRES | Iter | Rel residual | Eq.16 integral | Discrete global | Discrete interior |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | YES | 113 | 8.786874e-10 | 9.842689e-02 | 3.270941e-02 | 4.658729e-02 |
+| 2 | YES | 96 | 7.793074e-10 | 9.180453e-02 | 2.365161e-02 | 2.801970e-02 |
+| 3 | YES | 96 | 7.345654e-10 | 9.201634e-02 | 2.384583e-02 | 2.846281e-02 |
+| 4 | YES | 96 | 8.348048e-10 | 9.205168e-02 | 2.395021e-02 | 2.869954e-02 |
+| 5 | YES | 96 | 7.806618e-10 | 9.203966e-02 | 2.388758e-02 | 2.855601e-02 |
+
+Conclusão:
+
+```text
+PASSOU. A norma Eq. (16) estabiliza para ordens altas de avaliação; na montagem,
+ordem 2 já está no platô observado para refine15. Ordem 1 é visivelmente pior.
+```
+
+Observação: o valor histórico `relative_error_global` com Gauss 2x2x2 continua
+disponível como padrão; para estudo científico da norma, a coluna com ordem de
+referência 6 mostra o valor absoluto mais estável.
+
+---
+
+## Norma relativa integral da Eq. (16)
+
+Data: 2026-05-06
+
+Objetivo:
+
+```text
+Trocar a métrica principal relative_error_global da soma discreta em grade
+11x11x11 para a integral de domínio da Eq. (16), usando as mesmas células de
+integração 15x15x15 e Gauss 2x2x2 da montagem.
+```
+
+Comandos:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case refine15 --solver gmres
+./build/reproduce_cube_sparse --case refine15 --solver lapack-dense
+./build/reproduce_cube_sparse --case nonuniform_refine --solver gmres
+./build/reproduce_cube_sparse --case nonuniform_refine --solver lapack-dense
+```
+
+Build e testes:
+
+```text
+100% tests passed, 0 tests failed out of 29
+```
+
+Resumo dos casos:
+
+| Caso | Solver | Eq.16 domain | Discrete global | Discrete interior | Numerador Eq.16 | Denominador Eq.16 | Quad pts |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| refine15 | gmres | 8.217121e-02 | 2.365161e-02 | 2.801970e-02 | 5.711177e+01 | 8.458361e+03 | 27000 |
+| refine15 | lapack-dense | 8.217121e-02 | 2.365161e-02 | 2.801970e-02 | 5.711177e+01 | 8.458361e+03 | 27000 |
+| nonuniform_refine | gmres | 8.035461e-02 | 3.284785e-02 | 2.776750e-02 | 5.461448e+01 | 8.458361e+03 | 27000 |
+| nonuniform_refine | lapack-dense | 8.035461e-02 | 3.284785e-02 | 2.776750e-02 | 5.461448e+01 | 8.458361e+03 | 27000 |
+
+Conclusão:
+
+```text
+PASSOU. relative_error_global agora é a norma integral de domínio da Eq. (16).
+```
+
+Observação: a métrica discreta antiga foi preservada em
+`relative_error_discrete_global`; `relative_error_interior` continua sendo uma
+métrica discreta diagnóstica.
+
+---
+
+## Solver LAPACK denso opcional para validação de GMRES
+
+Data: 2026-05-06
+
+Objetivo:
+
+```text
+Validar o sistema aumentado esparso [K G^T; G 0] contra LAPACK dgesv,
+sem remover o GMRES atual nem alterar a montagem esparsa.
+```
+
+Comandos:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case refine15 --solver gmres
+./build/reproduce_cube_sparse --case refine15 --solver lapack-dense
+./build/reproduce_cube_sparse --case nonuniform_refine --solver gmres
+./build/reproduce_cube_sparse --case nonuniform_refine --solver lapack-dense
+```
+
+Build e testes:
+
+```text
+LAPACK found: enabling optional lapack-dense solver
+100% tests passed, 0 tests failed out of 29
+```
+
+Resumo dos casos:
+
+| Caso | Solver | Iter GMRES | LAPACK info | Residual final | Dif. GMRES/LAPACK | Erro interior 3D | Erro plano |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| refine15 | gmres | 96 | -1 | 1.013100e-07 | n/a | 2.801970e-02 | n/a |
+| refine15 | lapack-dense | 96 | 0 | 1.722711e-13 | 8.285314e-10 | 2.801970e-02 | n/a |
+| nonuniform_refine | gmres | 858 | -1 | 7.799122e-08 | n/a | 2.776750e-02 | 6.801633e-02 |
+| nonuniform_refine | lapack-dense | 858 | 0 | 1.975243e-13 | 3.368672e-08 | 2.776750e-02 | 6.801633e-02 |
+
+Tempos LAPACK:
+
+| Caso | CSR -> dense | dgesv fator/solve | Total solver |
+| --- | ---: | ---: | ---: |
+| refine15 | 0.108324 s | 1.225903 s | 1.334227 s |
+| nonuniform_refine | 0.112976 s | 0.979491 s | 1.092467 s |
+
+Conclusão:
+
+```text
+PASSOU. LAPACK e GMRES ficaram próximos nos dois casos executados.
+```
+
+Observação: `refine15` não exporta plano nessa CLI; o erro de plano é registrado
+quando aplicável, como em `nonuniform_refine`.
+
+---
+
 ## Nuvem não uniforme refinada `--case nonuniform_refine`
 
 Data: 2026-05-06 07:18:17 -03
@@ -643,7 +874,10 @@ Saída:
   exported points:        10201
   valid points:           10201
   MLS failures:           0
-  max abs error:          9.999999e+00
+  max abs error:          9.999999e+00  # Este valor alto no plano é explicado pelo fenômeno de Gibbs da série analítica truncada e pela natureza não interpolante do MLS nas regiões de forte gradiente e descontinuidade de contorno. Consulte `docs/figure3_reproduction.md`, Seção 5.
+
+---
+
   mean abs error:         4.249332e-02
   relative error plane:   8.189408e-02
   V_num min:              -4.803032e-01

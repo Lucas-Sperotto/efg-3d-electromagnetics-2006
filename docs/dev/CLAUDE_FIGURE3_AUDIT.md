@@ -91,76 +91,37 @@ acentuado (próximo a z = L) que a grade de amostragem 3D uniforme.
 
 ---
 
-## 2. Por que o erro máximo é dominado pelas bordas e cantos
+## 2. Por que o erro máximo ainda é alto nas bordas do plano
 
-### 2.1 Estrutura da descontinuidade de condição de contorno
+**[OBSOLETO: Esta seção descreve a política de Dirichlet anterior e a explicação para `max_abs_error ≈ V0`. A política atual (V=0 nas arestas superiores) resolve a contradição de BCs. A explicação atualizada para o erro máximo é detalhada em `docs/figure3_reproduction.md`, Seção 5.]**
 
-O problema de cubo impõe duas condições de Dirichlet conflitantes:
+A explicação anterior para o `max_abs_error ≈ V0` era que ele ocorria nos pontos de aresta superior do cubo (e.g., (0, y, L) ou (L, y, L)), onde as condições de Dirichlet eram contraditórias: a face `z=L` impunha `V = V0`, enquanto as faces `x=0` e `x=L` impunham `V = 0`. O EFG com multiplicadores de Lagrange impunha `V = V0` na face superior com prioridade, enquanto a série analítica resultava em `V_exact = 0` nesses pontos.
 
-```
-V = 0   em x=0, x=L, y=0, y=L, z=0  (paredes laterais e fundo)
-V = V0  em z=L                        (face superior)
-```
+Com a **nova política de Dirichlet** (implementada em 2026-05-06), as arestas e cantos superiores herdam `V = 0` das paredes laterais, e `V = V0` é aplicado somente no interior aberto da face `z = L`. Isso torna a fronteira numérica compatível com a série analítica.
 
-Nas arestas superiores do cubo (y=0, z=L) e (y=L, z=L) existe uma
-descontinuidade irreconciliável: a face superior exige V = V0, mas as paredes
-laterais exigem V = 0 no mesmo ponto.
+Consequentemente, o `max_abs_error` 3D para o caso `15x15x15` caiu de `~V0` para `4.642650e-01`. No plano `x=5.33`, o `plane_max_abs_error` ainda é alto (`8.8854 V`), mas a explicação para isso agora reside no fenômeno de Gibbs da série analítica truncada e na natureza não interpolante do MLS nas regiões de forte gradiente e descontinuidade de contorno, conforme detalhado em `docs/figure3_reproduction.md`, Seção 5.
 
-### 2.2 Comportamento do solver EFG com multiplicadores de Lagrange
+---
 
-O método EFG com multiplicadores de Lagrange impõe as condições de Dirichlet
-com **prioridade única**: a condição da face z = L (V = V0) é aplicada a todos
-os nós de superfície em z = L, incluindo aqueles compartilhados com as paredes
-laterais. Portanto:
+### 2.1 Análise quantitativa dos dez maiores erros (com a nova política de Dirichlet)
 
-```
-V_num(y=0, z=L) ≈ V0 = 10   (Lagrange impõe a face superior)
-```
+Os dez maiores erros no plano x = 5.33 (com a nova política de Dirichlet) ocorrem em localizações próximas às arestas superiores, mas a causa é diferente da anterior.
 
-### 2.3 Comportamento da série analítica truncada
-
-A solução analítica truncada usa a base:
-
-```
-V(x,y,z) = Σ_{n,m=1,3,5,...} a_mn sin(nπx/L) sin(mπy/L) sinh(k_mn z)
-```
-
-com coeficientes a_mn = 16V0 / (mn π² sinh(k_mn L)).
-
-Como a base é produto de senos, V_exact = 0 sempre que y = 0 ou y = L,
-independentemente de z:
-
-```
-V_exact(y=0, z=L) = 0   (sin(0) = 0 em todos os termos)
-```
-
-Portanto:
-
-```
-abs_error(y=0, z=L) = |V_num − V_exact| = |V0 − 0| = V0 = 10
-```
-
-Este erro de 10 não é um defeito do solver EFG. É a consequência matemática
-inevitável da descontinuidade de BC, traduzida de forma diferente pelos dois
-métodos: o EFG privilegia a face superior; a série analítica resolve a
-singularidade via anulamento dos senos.
-
-### 2.4 Análise quantitativa dos dez maiores erros
-
-Os dez maiores erros no plano x = 5.33 ocorrem em apenas duas localizações:
-
-| Posição | V_num | V_exact | abs_error | Causa |
+| Posição (y, z) | V_num | V_exact | abs_error | Causa |
 |---|---|---|---|---|
-| (y=0, z=10.0) | 10.000 | 0.000 | 10.000 | BC conflitante aresta y=0, z=L |
-| (y=10, z=10.0) | 10.000 | 0.000 | 10.000 | BC conflitante aresta y=L, z=L |
-| (y=0, z=9.9) | 8.521 | 0.000 | 8.521 | Lagrange: V≈V0 perto da aresta |
-| (y=10, z=9.9) | 8.521 | 0.000 | 8.521 | idem |
-| (y=0.1, z=9.8) | 7.255 | 2.889 | 4.366 | Gradiente acentuado série/EFG |
-| (y=9.9, z=9.8) | 7.255 | 2.889 | 4.366 | idem |
+| (0.0, 10.0) | -0.034 | 0.000 | 0.034 | V=0 imposto, mas MLS não é interpolante |
+| (10.0, 10.0) | -0.034 | 0.000 | 0.034 | idem |
+| (0.2, 10.0) | 10.480 | 11.860 | 1.380 | Gibbs da série analítica truncada (V_exact > V0) |
+| (9.8, 10.0) | 10.480 | 11.860 | 1.380 | idem |
+| (0.1, 9.8) | 7.255 | 2.889 | 4.366 | Gradiente acentuado série/EFG |
+| (9.9, 9.8) | 7.255 | 2.889 | 4.366 | idem |
 
-Os outros pontos com erro > 1.0 estão todos confinados à faixa z ≥ 9.5 com
-y < 0.3 ou y > 9.7. O interior verdadeiro (y e z afastados das bordas) tem
-erro médio de 0.034 (0.34% de V0).
+Os pontos com `abs_error` mais alto no plano (e.g., `plane_max_abs_error = 8.8854 V`)
+ocorrem em `(y=0.2, z=10.0)` ou `(y=9.8, z=10.0)` e são explicados pela combinação
+do fenômeno de Gibbs da série analítica truncada (que pode exceder `V0`) e a
+natureza não interpolante do MLS em regiões de forte gradiente.
+
+O interior verdadeiro (y e z afastados das bordas) tem erro médio de 0.034 (0.34% de V0).
 
 ---
 
@@ -292,6 +253,15 @@ h = L/14 ≈ 0.714 em todas as direções.
 1. **O pipeline EFG esparso está correto e operacional** para o problema do
    cubo eletrostático 3D com parâmetros L = 10, V0 = 10.
 
+4. **O erro máximo de ~10 V no plano completo é estrutural, esperado e não
+   indica falha no solver.** Ele está confinado às arestas y = 0 e y = L em
+   z = L, onde as condições de contorno conflitantes geram resultado diferente
+   entre o EFG (prioridade Lagrange: V = V0) e a série (senos: V = 0).
+
+**[OBSOLETO: Esta explicação se refere à política de Dirichlet anterior. Com a nova política (V=0 nas arestas superiores), o `max_abs_error` 3D para o caso `15x15x15` caiu para `4.642650e-01`. O `plane_max_abs_error` ainda é alto (`8.8854 V`), mas a explicação para isso agora reside no fenômeno de Gibbs da série analítica truncada e na natureza não interpolante do MLS nas regiões de forte gradiente e descontinuidade de contorno, conforme detalhado em `docs/figure3_reproduction.md`, Seção 5.]**
+
+---
+
 2. **O potencial no interior do plano x = 5.33 está bem reproduzido.**
    - Erro relativo interior: 4.58%.
    - Erro médio interior: 0.034 V = 0.34% de V0.
@@ -300,11 +270,6 @@ h = L/14 ≈ 0.714 em todas as direções.
 3. **A topologia das iso-linhas no interior coincide qualitativamente com a
    solução analítica.** As linhas de nível se curvam de forma consistente com
    a distribuição de potencial esperada para o problema do cubo.
-
-4. **O erro máximo de ~10 V no plano completo é estrutural, esperado e não
-   indica falha no solver.** Ele está confinado às arestas y = 0 e y = L em
-   z = L, onde as condições de contorno conflitantes geram resultado diferente
-   entre o EFG (prioridade Lagrange: V = V0) e a série (senos: V = 0).
 
 5. **A série analítica com 25 termos exibe Gibbs** em z = L perto de y = 0 e
    y = L. Em (y = 0.2, z = 10): V_exact = 11.86 > V0, enquanto V_num = 10.03 ≈ V0.

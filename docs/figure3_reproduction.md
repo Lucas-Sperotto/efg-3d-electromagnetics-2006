@@ -238,7 +238,7 @@ especifica explicitamente os níveis de contorno usados na Figura 3. A
 concordância visual depende dos níveis escolhidos; se o artigo usa níveis
 diferentes, a comparação deve ser atualizada.
 
-### 7.4 Métrica de erro diferente
+### 7.4 Norma de erro Eq. (16)
 
 O artigo mede o erro pela integral contínua da Eq. (16):
 
@@ -249,10 +249,10 @@ e = \left[
 \right]^{1/2}
 $$
 
-Este projeto usa a norma discreta análoga calculada sobre uma grade de
-amostragem uniforme. Para distribuições de nós uniformes e grades de
-amostragem densas, as duas métricas convergem; ainda assim, os valores
-numéricos não são diretamente comparáveis sem verificação adicional.
+Este projeto agora calcula `relative_error_global` por essa integral de domínio,
+aproximada com as mesmas células de integração e quadratura Gauss `2x2x2`
+usadas na montagem. A antiga métrica de grade uniforme foi preservada apenas
+como diagnóstico em `relative_error_discrete_global`.
 
 ### 7.5 Comparação visual, não pixel a pixel
 
@@ -273,10 +273,9 @@ quantitativamente:
 - o erro máximo interior do plano regular é `4,583 V`, concentrado perto das
   arestas superiores.
 
-As diferenças decorrem de quatro fatores principais: grade regular em vez da
-nuvem adaptada do artigo, norma discreta em vez da integral da Eq. (16), série
-analítica truncada com Gibbs perto da tampa e ausência de comparação digital
-com os níveis exatos da figura publicada.
+As diferenças decorrem principalmente de três fatores: grade regular em vez da
+nuvem adaptada do artigo, série analítica truncada com Gibbs perto da tampa e
+ausência de comparação digital com os níveis exatos da figura publicada.
 
 ---
 
@@ -370,8 +369,8 @@ uniforme por margem pequena (2,80 % vs. 2,96 %). Isso é esperado porque:
   y → L próximos a z = L).
 - A nuvem implementada adiciona nós em toda a faixa interior da zona superior, sem
   concentração específica nas arestas onde o gradiente é máximo.
-- A métrica de erro usada aqui (L2 discreta em grade uniforme 11×11×11) difere da norma
-  contínua do artigo (Eq. 16), tornando a comparação indireta.
+- A métrica principal de erro agora segue a Eq. (16), mas a nuvem implementada
+  ainda não reproduz exatamente a distribuição de nós da publicação.
 
 **GMRES:** a nuvem não uniforme exigiu 391 iterações contra 69 do 15×15×15 regular. O raio
 de suporte máximo passou de 27 para 53 nós ativos, indicando maior variabilidade na
@@ -384,8 +383,8 @@ conectividade local — o sistema fica menos uniformemente condicionado sem prec
    nós no interior em xy (y distante das paredes), que não resolve o gradiente de borda.
 2. **Possivelmente mais nós totais:** o artigo não especifica explicitamente o número de
    nós da nuvem não uniforme.
-3. **Norma de erro diferente:** 1,40 % é calculado pela integral contínua da Eq. (16);
-   nossa norma discreta não é diretamente comparável.
+3. **Distribuição de nós ainda diferente:** a norma principal agora segue a Eq. (16),
+   mas a nuvem atual ainda é uma aproximação didática da nuvem não uniforme do artigo.
 
 A nuvem atual demonstra melhora qualitativa e valida o pipeline para distribuições não
 uniformes. O refinamento `base_n=13`, `top_n=15` melhora a métrica 3D interior, mas

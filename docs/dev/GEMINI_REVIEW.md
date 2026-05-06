@@ -59,7 +59,7 @@ O projeto está pronto para a etapa final de análise científica. A recomendaç
 Justificativa:
 
 ```text
-O pipeline esparso está estável, validado e robusto. Os testes para 5x5x5 e 11x11x11 passaram com sucesso, e os critérios de parada (conectividade, falhas de MLS, convergência do GMRES) foram satisfeitos. Os riscos são conhecidos e monitoráveis.
+O pipeline completo, da simulação à visualização, foi implementado e validado. Os casos de refinamento (`refine13`, `refine15`) foram executados com sucesso, o plano de interesse (`plane15`) foi exportado, e o script de plotagem (`scripts/plot_cube_plane.py`) gera os gráficos e métricas necessários. O projeto atingiu o "Critério de sucesso intermediário" definido no TODO.md.
 
-A recomendação é aplicar as pequenas melhorias de clareza e comentários propostas nesta revisão e, em seguida, prosseguir com a execução dos casos de refinamento `13x13x13` e `15x15x15`, ajustando os parâmetros do GMRES conforme a auditoria do Claude sugeriu. Não há necessidade de revisões adicionais de arquitetura ou correção de bugs antes disso.
+A próxima etapa é puramente analítica: comparar os resultados visuais e quantitativos (especialmente o erro no interior do plano) com os do artigo original, documentar as semelhanças e divergências, e consolidar as conclusões científicas do projeto, cumprindo o "Critério de sucesso final".
 ```

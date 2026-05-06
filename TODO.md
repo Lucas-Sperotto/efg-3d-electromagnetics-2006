@@ -23,7 +23,8 @@ A prioridade agora não é criar investigações secundárias, mas consolidar a 
 - [x] Solver local 4x4 para MLS linear 3D.
 - [x] MLS linear 3D sem derivadas.
 - [x] MLS linear 3D com gradientes.
-- [x] Quadratura de Gauss 2x2x2.
+- [x] Quadratura de Gauss 2x2x2 como padrão.
+- [x] Regras Gauss-Legendre 1D/3D para ordens 1..8 em estudos controlados.
 - [x] Montagem local da matriz de rigidez.
 - [x] Montagem global densa da matriz de rigidez.
 - [x] Montagem densa das restrições de Dirichlet via multiplicadores de Lagrange.
@@ -50,14 +51,23 @@ A prioridade agora não é criar investigações secundárias, mas consolidar a 
 - [x] Montagem esparsa da rigidez (`global_stiffness_assemble_sparse_coo`).
 - [x] Montagem esparsa do sistema aumentado (`lagrange_assemble_augmented_sparse_coo`).
 - [x] Solver iterativo GMRES reiniciado (`gmres_solve`).
+- [x] Solver LAPACK denso opcional (`solve_augmented_lapack_dense`) para validar
+  o sistema aumentado esparso contra `dgesv`.
+- [x] Norma relativa integral da Eq. (16) no domínio (`relative_error_norm_domain_integral`).
+- [x] Estudo de sensibilidade da ordem de integração para `refine15`.
 
-### 0.2. Evidências recentes (28/28 testes passando)
+### 0.2. Evidências recentes (29/29 testes passando)
 
 - `test_mls_diagnostic` — conectividade e condicionamento em grade 3×3×3 e 5×5×5.
 - `test_sparse_matrix` — inserção, duplicatas, compressão, matvec CSR.
 - `test_sparse_global_stiffness` — sparse K ≈ dense K para 3×3×3 (tol 1e-10).
 - `test_lagrange_augmented_sparse` — sparse A_aug ≈ dense A_aug para 5×5 manual e 3×3×3 cube.
 - `test_gmres` — solução 5×5 conhecida + GMRES vs. solver denso no cubo 3×3×3.
+- `test_lapack_dense_solver` — conversão CSR -> dense column-major e solve LAPACK 5×5 quando disponível.
+- `test_error_norm` — norma discreta e norma integral Eq. (16) com campos constantes,
+  reprodução linear, denominador zero e falha MLS.
+- `test_gauss` — regras Gauss-Legendre 1..8, soma dos pesos 1D/3D,
+  integração de volume físico, função linear e polinômio quadrático.
 
 ---
 
@@ -354,6 +364,73 @@ com matriz esparsa CSR.
 - [ ] SSOR ou escalonamento simétrico — pode ajudar sem bloco-diagonal.
 - [ ] ILU simples — mais caro, mas mais geral.
 
+### 8.4. Validação direta opcional com LAPACK
+
+- [x] Criar opção de solver:
+
+  ```bash
+  ./build/reproduce_cube_sparse --case refine15 --solver gmres
+  ./build/reproduce_cube_sparse --case refine15 --solver lapack-dense
+  ```
+
+- [x] Implementar conversão CSR -> matriz densa column-major.
+- [x] Resolver com LAPACK `dgesv` quando disponível.
+- [x] Manter build funcional sem LAPACK.
+- [x] Registrar tempo de conversão, tempo de fatoração/solução, resíduo final
+  e diferença relativa GMRES/LAPACK.
+- [x] Validar `refine15`: diferença relativa GMRES/LAPACK `8.285314e-10`.
+- [x] Validar `nonuniform_refine`: diferença relativa GMRES/LAPACK `3.368672e-08`.
+
+### 8.5. Norma relativa integral da Eq. (16)
+
+- [x] Implementar integral de domínio:
+
+  ```text
+  e = sqrt( int_Omega (V_EFG - V_exato)^2 dOmega
+            / int_Omega V_exato^2 dOmega )
+  ```
+
+- [x] Avaliar `V_EFG = Σ_I Phi_I(x_gp) u_I` nos pontos de Gauss.
+- [x] Usar Gauss 2x2x2 como padrão para manter compatibilidade com a montagem.
+- [x] Permitir ordem de norma explícita para separar avaliação de erro da montagem.
+- [x] Tornar `relative_error_global` a métrica principal da Eq. (16).
+- [x] Preservar a métrica antiga como `relative_error_discrete_global`.
+- [x] Validar `refine15`: Eq. (16) `8.217121e-02`.
+- [x] Validar `nonuniform_refine`: Eq. (16) `8.035461e-02`.
+
+### 8.6. Estudo controlado da ordem de integração
+
+- [x] Generalizar a quadratura Gauss-Legendre para ordens 1..8.
+- [x] Manter ordem 2 como padrão de montagem e norma histórica.
+- [x] Separar ordem da montagem de K e ordem da norma Eq. (16).
+- [x] Gerar `data/output/integration_order_norm_sensitivity_refine15.csv`.
+- [x] Gerar `data/output/integration_order_solution_sensitivity_refine15.csv`.
+- [x] Validar estudo de norma: ordens 5..8 estabilizam em torno de `9.18e-02`.
+- [x] Validar estudo de montagem: ordens 2..5 estabilizam em torno de `9.20e-02`
+  usando norma de referência ordem 6.
+- [x] Registrar que montagem ordem 1 converge, mas piora o erro integral para
+  `9.842689e-02`.
+
+### 8.7. Análise regional da norma integral da Eq. (16)
+
+- [x] Criar CLI:
+
+  ```bash
+  ./build/reproduce_cube_sparse --case refine15 --error-region-study
+  ```
+
+- [x] Fixar `refine15`: nós 15x15x15, células 15x15x15, montagem ordem 2,
+  norma ordem 6 e GMRES.
+- [x] Gerar `data/output/error_region_integral_refine15.csv`.
+- [x] Avaliar regiões: domínio completo, interior aberto, núcleos com delta,
+  caixa central, camada superior, bandas de aresta superiores e interior da
+  face superior.
+- [x] Validar `mls_failures = 0` em todas as regiões.
+- [x] Registrar região dominante: `upper_layer` concentra 98,24 % do numerador
+  global; `upper_edge_bands` concentra 97,14 % do numerador global.
+- [x] Registrar que o núcleo do domínio não domina o erro: `central_box`
+  contribui apenas 0,14 % do numerador global.
+
 ---
 
 ## 9. Prioridade 7 — Reprodução do cubo com refinamento suficiente
@@ -378,6 +455,7 @@ Nuvem não uniforme:
 ### 9.3. Métricas
 
 - [x] erro relativo discreto global;
+- [x] erro relativo integral de domínio pela Eq. (16);
 - [x] erro relativo discreto interno;
 - [x] erro máximo absoluto;
 - [x] erro no plano `x = 5.33`;
@@ -385,6 +463,8 @@ Nuvem não uniforme:
 - [x] número de iterações GMRES;
 - [x] tempo de montagem;
 - [x] tempo de solução;
+- [x] tempo de conversão CSR -> dense e tempo `dgesv` para validação LAPACK;
+- [x] diferença relativa GMRES/LAPACK nos casos regular e não uniforme refinado;
 - [ ] memória aproximada.
 
 ---
@@ -440,8 +520,8 @@ x = 5.33
   Concluído em `docs/figure3_reproduction.md`: a figura principal fica com o
   caso regular `15x15x15`; a nuvem `nonuniform` é comparação suplementar.
   Os valores do artigo (`1,40 %` e `0,15 V`) ainda não foram reproduzidos
-  quantitativamente. A divergência foi atribuída à grade regular, métrica de
-  erro discreta, série truncada e ausência de comparação digital pixel a pixel.
+  quantitativamente. A divergência foi atribuída à grade/nuvem ainda diferente
+  da publicação, série truncada e ausência de comparação digital pixel a pixel.
 
 ---
 
