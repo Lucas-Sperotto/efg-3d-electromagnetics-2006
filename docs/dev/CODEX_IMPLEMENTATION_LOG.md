@@ -1,5 +1,107 @@
 # CODEX_IMPLEMENTATION_LOG — Registro de implementação
 
+## 2026-05-05 23:01:07 -03 — Iso-linhas para comparação com Figura 3
+
+Objetivo da rodada:
+
+```text
+Ajustar apenas scripts/plot_cube_plane.py para gerar figuras mais próximas da
+Figura 3 do artigo, usando iso-linhas com níveis fixos de potencial.
+```
+
+Arquivos modificados:
+
+- `scripts/plot_cube_plane.py`
+- `docs/dev/CODEX_IMPLEMENTATION_LOG.md`
+- `docs/dev/TEST_REPORT.md`
+- `TODO.md`
+
+Arquivos gerados em `data/output/figures/`:
+
+- `cube_plane_x_5_33_V_num_contour.png`
+- `cube_plane_x_5_33_V_exact_contour.png`
+- `cube_plane_x_5_33_abs_error_contour.png`
+- `cube_plane_x_5_33_comparison.png`
+- `cube_plane_x_5_33_V_num_isolines.png`
+- `cube_plane_x_5_33_V_exact_isolines.png`
+- `cube_plane_x_5_33_overlay_isolines.png`
+- `cube_plane_x_5_33_article_style.png`
+- `cube_plane_x_5_33_metrics.txt`
+- `cube_plane_x_5_33_metrics.csv`
+
+Resumo técnico:
+
+- Preservadas as figuras preenchidas existentes (`contourf`) e a comparação
+  em três painéis.
+- Adicionadas iso-linhas com níveis fixos:
+
+  ```text
+  1,2,3,4,5,6,7,8,9,10
+  ```
+
+- Adicionados modos CLI:
+  - `python3 scripts/plot_cube_plane.py`;
+  - `python3 scripts/plot_cube_plane.py --article-style`;
+  - `python3 scripts/plot_cube_plane.py --all`.
+- No modo `--all`, o script gera:
+  - iso-linhas de `V_num`;
+  - iso-linhas de `V_exact`;
+  - sobreposição com `V_num` sólido e `V_exact` tracejado;
+  - figura estilo artigo em fundo branco, sem preenchimento.
+- O arquivo de métricas registra os níveis de contorno e as figuras estilo
+  artigo geradas.
+- Nenhuma alteração foi feita em solver, montagem esparsa, GMRES, CSV exportado
+  ou `apps/reproduce_cube_sparse.c`.
+
+Comandos executados:
+
+```bash
+python3 -m py_compile scripts/plot_cube_plane.py
+python3 scripts/plot_cube_plane.py --all
+git diff --check
+```
+
+Saída principal:
+
+```text
+input CSV: data/output/cube_plane_x_5_33_refine15.csv
+points: 10201
+grid shape: 101 y samples x 101 z samples
+V_num contour: data/output/figures/cube_plane_x_5_33_V_num_contour.png
+V_exact contour: data/output/figures/cube_plane_x_5_33_V_exact_contour.png
+abs_error contour: data/output/figures/cube_plane_x_5_33_abs_error_contour.png
+comparison: data/output/figures/cube_plane_x_5_33_comparison.png
+contour levels: 1,2,3,4,5,6,7,8,9,10
+V_num isolines: data/output/figures/cube_plane_x_5_33_V_num_isolines.png
+V_exact isolines: data/output/figures/cube_plane_x_5_33_V_exact_isolines.png
+overlay isolines: data/output/figures/cube_plane_x_5_33_overlay_isolines.png
+article style: data/output/figures/cube_plane_x_5_33_article_style.png
+metrics: data/output/figures/cube_plane_x_5_33_metrics.txt
+metrics CSV: data/output/figures/cube_plane_x_5_33_metrics.csv
+plane max abs error: 9.9999994786795359
+plane mean abs error: 0.042493315964941686
+plane relative error: 0.081894083339740326
+interior max abs error: 4.3657975314819284
+interior mean abs error: 0.03367838888223184
+interior relative error: 0.045826314858457826
+```
+
+Problemas encontrados:
+
+- Nenhum erro de sintaxe no script.
+- Nenhuma alteração necessária no pipeline numérico.
+- A comparação visual ainda deve ser documentada com a limitação de que a
+  malha atual é regular, enquanto o artigo usa nuvem não uniforme.
+
+Próxima etapa recomendada:
+
+```text
+Documentar a Figura 3 usando a figura overlay/article_style como comparação
+principal, citando os níveis 1..10 V e as limitações de grade regular.
+```
+
+---
+
 ## 2026-05-05 22:39:02 -03 — Visualização do plano x = 5.33
 
 Objetivo da rodada:

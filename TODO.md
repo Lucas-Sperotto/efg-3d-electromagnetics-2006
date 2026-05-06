@@ -419,6 +419,13 @@ x = 5.33
   data/output/figures/
   ```
 
+- [x] Ajustar script de contorno para comparação com a Figura 3:
+
+  - iso-linhas de `V_num`;
+  - iso-linhas de `V_exact`;
+  - sobreposição com `V_num` sólido e `V_exact` tracejado;
+  - figura estilo artigo com fundo branco e níveis fixos `1,2,3,4,5,6,7,8,9,10`.
+
 - [ ] Comparar erro máximo com valor reportado no artigo.
 - [ ] Documentar divergências.
 

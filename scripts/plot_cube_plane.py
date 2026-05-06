@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import Normalize
+from matplotlib.lines import Line2D
 
 
 DEFAULT_INPUT = Path("data/output/cube_plane_x_5_33_refine15.csv")
@@ -19,6 +20,8 @@ DEFAULT_OUTPUT_DIR = Path("data/output/figures")
 DEFAULT_L = 10.0
 DEFAULT_LEVELS = 40
 DEFAULT_DPI = 220
+ARTICLE_DPI = 320
+ARTICLE_CONTOUR_LEVELS = np.arange(1.0, 11.0, 1.0)
 
 REQUIRED_COLUMNS = ["x", "y", "z", "V_num", "V_exact", "abs_error"]
 
@@ -50,6 +53,16 @@ def parse_args():
         type=int,
         default=DEFAULT_LEVELS,
         help=f"Number of filled contour levels. Default: {DEFAULT_LEVELS}",
+    )
+    parser.add_argument(
+        "--article-style",
+        action="store_true",
+        help="Also generate fixed-level isoline figures for Figure 3 comparison.",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Generate filled-contour figures and all fixed-level isoline figures.",
     )
     return parser.parse_args()
 
@@ -160,7 +173,11 @@ def format_float(value):
     return f"{value:.17g}"
 
 
-def metrics_text(input_path, output_dir, grid_shape, metrics):
+def format_levels(levels):
+    return ",".join(f"{level:g}" for level in levels)
+
+
+def metrics_text(input_path, output_dir, grid_shape, metrics, contour_levels, article_figures):
     lines = [
         "cube_plane_x_5_33_metrics",
         f"input_csv: {input_path}",
@@ -185,7 +202,12 @@ def metrics_text(input_path, output_dir, grid_shape, metrics):
         f"interior_max_abs_error: {format_float(metrics['interior_max_abs_error'])}",
         f"interior_mean_abs_error: {format_float(metrics['interior_mean_abs_error'])}",
         f"interior_relative_error: {format_float(metrics['interior_relative_error'])}",
+        f"contour_levels: {format_levels(contour_levels)}",
+        f"article_style_figures_count: {len(article_figures)}",
     ]
+
+    for figure in article_figures:
+        lines.append(f"article_style_figure: {figure}")
 
     return "\n".join(lines) + "\n"
 
@@ -194,7 +216,7 @@ def save_metrics(path, text):
     path.write_text(text, encoding="utf-8")
 
 
-def save_metrics_csv(path, metrics):
+def save_metrics_csv(path, metrics, contour_levels, article_figures):
     rows = []
 
     for key, value in metrics.items():
@@ -205,7 +227,23 @@ def save_metrics_csv(path, metrics):
 
         rows.append({"metric": key, "value": formatted_value})
 
+    rows.append({"metric": "contour_levels", "value": format_levels(contour_levels)})
+    rows.append(
+        {"metric": "article_style_figures_count", "value": str(len(article_figures))}
+    )
+
+    for index, figure in enumerate(article_figures, start=1):
+        rows.append({"metric": f"article_style_figure_{index}", "value": str(figure)})
+
     pd.DataFrame(rows, columns=["metric", "value"]).to_csv(path, index=False)
+
+
+def configure_plane_axis(axis, y_grid, z_grid):
+    axis.set_xlabel("y")
+    axis.set_ylabel("z")
+    axis.set_aspect("equal", adjustable="box")
+    axis.set_xlim(float(np.min(y_grid)), float(np.max(y_grid)))
+    axis.set_ylim(float(np.min(z_grid)), float(np.max(z_grid)))
 
 
 def plot_single_contour(
@@ -221,15 +259,137 @@ def plot_single_contour(
     fig, axis = plt.subplots(figsize=(6.4, 5.4), constrained_layout=True)
     contour = axis.contourf(y_grid, z_grid, values, levels=levels, cmap=cmap)
 
-    axis.set_xlabel("y")
-    axis.set_ylabel("z")
     axis.set_title(title)
-    axis.set_aspect("equal", adjustable="box")
-    axis.set_xlim(float(np.min(y_grid)), float(np.max(y_grid)))
-    axis.set_ylim(float(np.min(z_grid)), float(np.max(z_grid)))
+    configure_plane_axis(axis, y_grid, z_grid)
     fig.colorbar(contour, ax=axis, label=colorbar_label)
 
     fig.savefig(output_path, dpi=DEFAULT_DPI)
+    plt.close(fig)
+
+
+def add_contour_labels(axis, contour, font_size=8):
+    axis.clabel(
+        contour,
+        contour.levels,
+        inline=True,
+        fontsize=font_size,
+        fmt=lambda value: f"{value:g}",
+    )
+
+
+def plot_single_isolines(
+    y_grid,
+    z_grid,
+    values,
+    title,
+    output_path,
+    levels,
+    color,
+    linestyle="solid",
+):
+    fig, axis = plt.subplots(figsize=(6.4, 5.4), constrained_layout=True)
+    fig.patch.set_facecolor("white")
+    axis.set_facecolor("white")
+
+    contours = axis.contour(
+        y_grid,
+        z_grid,
+        values,
+        levels=levels,
+        colors=color,
+        linestyles=linestyle,
+        linewidths=1.25,
+    )
+    add_contour_labels(axis, contours)
+
+    axis.set_title(title)
+    configure_plane_axis(axis, y_grid, z_grid)
+
+    fig.savefig(output_path, dpi=ARTICLE_DPI)
+    plt.close(fig)
+
+
+def plot_overlay_isolines(y_grid, z_grid, v_num, v_exact, output_path, levels, plane_x):
+    fig, axis = plt.subplots(figsize=(7.0, 5.8), constrained_layout=True)
+    fig.patch.set_facecolor("white")
+    axis.set_facecolor("white")
+
+    numerical = axis.contour(
+        y_grid,
+        z_grid,
+        v_num,
+        levels=levels,
+        colors="#1f77b4",
+        linestyles="solid",
+        linewidths=1.35,
+    )
+    analytical = axis.contour(
+        y_grid,
+        z_grid,
+        v_exact,
+        levels=levels,
+        colors="#d62728",
+        linestyles="dashed",
+        linewidths=1.35,
+    )
+
+    add_contour_labels(axis, numerical)
+    add_contour_labels(axis, analytical)
+
+    axis.set_title(f"Fixed potential isolines on x = {plane_x:.2f}")
+    configure_plane_axis(axis, y_grid, z_grid)
+    axis.legend(
+        handles=[
+            Line2D([0], [0], color="#1f77b4", linestyle="solid", label="V_num"),
+            Line2D([0], [0], color="#d62728", linestyle="dashed", label="V_exact"),
+        ],
+        loc="lower right",
+        frameon=True,
+    )
+
+    fig.savefig(output_path, dpi=ARTICLE_DPI)
+    plt.close(fig)
+
+
+def plot_article_style(y_grid, z_grid, v_num, v_exact, output_path, levels, plane_x):
+    fig, axis = plt.subplots(figsize=(6.6, 5.6), constrained_layout=True)
+    fig.patch.set_facecolor("white")
+    axis.set_facecolor("white")
+
+    numerical = axis.contour(
+        y_grid,
+        z_grid,
+        v_num,
+        levels=levels,
+        colors="black",
+        linestyles="solid",
+        linewidths=1.25,
+    )
+    analytical = axis.contour(
+        y_grid,
+        z_grid,
+        v_exact,
+        levels=levels,
+        colors="0.45",
+        linestyles="dashed",
+        linewidths=1.15,
+    )
+
+    add_contour_labels(axis, numerical, font_size=7)
+    add_contour_labels(axis, analytical, font_size=7)
+
+    axis.set_title(f"Potential isolines, x = {plane_x:.2f}")
+    configure_plane_axis(axis, y_grid, z_grid)
+    axis.legend(
+        handles=[
+            Line2D([0], [0], color="black", linestyle="solid", label="V_num"),
+            Line2D([0], [0], color="0.45", linestyle="dashed", label="V_exact"),
+        ],
+        loc="lower right",
+        frameon=False,
+    )
+
+    fig.savefig(output_path, dpi=ARTICLE_DPI)
     plt.close(fig)
 
 
@@ -273,12 +433,8 @@ def plot_comparison(
             cmap=cmap,
             norm=norm,
         )
-        axis.set_xlabel("y")
-        axis.set_ylabel("z")
         axis.set_title(title)
-        axis.set_aspect("equal", adjustable="box")
-        axis.set_xlim(float(np.min(y_grid)), float(np.max(y_grid)))
-        axis.set_ylim(float(np.min(z_grid)), float(np.max(z_grid)))
+        configure_plane_axis(axis, y_grid, z_grid)
         fig.colorbar(contour, ax=axis, label=colorbar_label)
 
     fig.suptitle(f"Cube potential contours on x = {plane_x:.2f}")
@@ -293,6 +449,8 @@ def main():
         print("levels must be at least 2.", file=sys.stderr)
         return 1
 
+    generate_article_style = args.article_style or args.all
+
     try:
         data = read_plane_csv(args.input)
         y_grid, z_grid, v_num = make_grid(data, "V_num")
@@ -306,6 +464,16 @@ def main():
         v_exact_path = args.output_dir / "cube_plane_x_5_33_V_exact_contour.png"
         abs_error_path = args.output_dir / "cube_plane_x_5_33_abs_error_contour.png"
         comparison_path = args.output_dir / "cube_plane_x_5_33_comparison.png"
+        v_num_isolines_path = (
+            args.output_dir / "cube_plane_x_5_33_V_num_isolines.png"
+        )
+        v_exact_isolines_path = (
+            args.output_dir / "cube_plane_x_5_33_V_exact_isolines.png"
+        )
+        overlay_isolines_path = (
+            args.output_dir / "cube_plane_x_5_33_overlay_isolines.png"
+        )
+        article_style_path = args.output_dir / "cube_plane_x_5_33_article_style.png"
         metrics_path = args.output_dir / "cube_plane_x_5_33_metrics.txt"
         metrics_csv_path = args.output_dir / "cube_plane_x_5_33_metrics.csv"
 
@@ -350,9 +518,67 @@ def main():
             plane_x,
         )
 
-        text = metrics_text(args.input, args.output_dir, v_num.shape, metrics)
+        article_figures = []
+        if generate_article_style:
+            plot_single_isolines(
+                y_grid,
+                z_grid,
+                v_num,
+                f"Numerical potential isolines on x = {plane_x:.2f}",
+                v_num_isolines_path,
+                ARTICLE_CONTOUR_LEVELS,
+                "#1f77b4",
+            )
+            plot_single_isolines(
+                y_grid,
+                z_grid,
+                v_exact,
+                f"Analytical potential isolines on x = {plane_x:.2f}",
+                v_exact_isolines_path,
+                ARTICLE_CONTOUR_LEVELS,
+                "#d62728",
+                linestyle="dashed",
+            )
+            plot_overlay_isolines(
+                y_grid,
+                z_grid,
+                v_num,
+                v_exact,
+                overlay_isolines_path,
+                ARTICLE_CONTOUR_LEVELS,
+                plane_x,
+            )
+            plot_article_style(
+                y_grid,
+                z_grid,
+                v_num,
+                v_exact,
+                article_style_path,
+                ARTICLE_CONTOUR_LEVELS,
+                plane_x,
+            )
+            article_figures = [
+                v_num_isolines_path,
+                v_exact_isolines_path,
+                overlay_isolines_path,
+                article_style_path,
+            ]
+
+        text = metrics_text(
+            args.input,
+            args.output_dir,
+            v_num.shape,
+            metrics,
+            ARTICLE_CONTOUR_LEVELS,
+            article_figures,
+        )
         save_metrics(metrics_path, text)
-        save_metrics_csv(metrics_csv_path, metrics)
+        save_metrics_csv(
+            metrics_csv_path,
+            metrics,
+            ARTICLE_CONTOUR_LEVELS,
+            article_figures,
+        )
     except (OSError, ValueError, FileNotFoundError) as exc:
         print(f"Could not plot cube plane: {exc}", file=sys.stderr)
         return 1
@@ -364,6 +590,12 @@ def main():
     print(f"V_exact contour: {v_exact_path}")
     print(f"abs_error contour: {abs_error_path}")
     print(f"comparison: {comparison_path}")
+    print(f"contour levels: {format_levels(ARTICLE_CONTOUR_LEVELS)}")
+    if generate_article_style:
+        print(f"V_num isolines: {v_num_isolines_path}")
+        print(f"V_exact isolines: {v_exact_isolines_path}")
+        print(f"overlay isolines: {overlay_isolines_path}")
+        print(f"article style: {article_style_path}")
     print(f"metrics: {metrics_path}")
     print(f"metrics CSV: {metrics_csv_path}")
     print(f"plane max abs error: {format_float(metrics['plane_max_abs_error'])}")
