@@ -5,10 +5,18 @@
  * Gauss-Legendre quadrature helpers.
  *
  * The article uses Gauss quadrature of order 2 in cubic integration cells
- * (docs/03_resultados_numericos.md, sections 3.3 and 3.5). This module only
- * implements that small quadrature rule; it does not implement MLS, assembly,
- * GMRES, or the EFG solver.
+ * (docs/03_resultados_numericos.md, sections 3.3 and 3.5). This module keeps
+ * that order as the default while also exposing orders 1..8 for controlled
+ * quadrature studies. It does not implement MLS, assembly, GMRES, or the EFG
+ * solver.
  */
+
+#define GAUSS_OK 0
+#define GAUSS_INVALID_ARGUMENT 1
+
+#define GAUSS_LEGENDRE_MIN_ORDER 1
+#define GAUSS_LEGENDRE_MAX_ORDER 8
+#define GAUSS_LEGENDRE_MAX_CUBE_POINTS 512
 
 #define GAUSS_LEGENDRE_ORDER2_1D_POINTS 2
 #define GAUSS_LEGENDRE_ORDER2_CUBE_POINTS 8
@@ -24,6 +32,29 @@ typedef struct GaussPoint3D {
     double z;
     double weight;
 } GaussPoint3D;
+
+/*
+ * Fill the Gauss-Legendre points and weights on the reference interval
+ * [-1, 1] for order 1..8.
+ */
+int gauss_legendre_rule_1d(int order, double *points, double *weights);
+
+/*
+ * Generate tensor-product Gauss-Legendre points for one rectangular cell.
+ *
+ * The returned coordinates are physical coordinates and the weights include
+ * the mapping Jacobian from [-1,1]^3 to the requested cell.
+ */
+int gauss_legendre_cube(int order,
+                        double x_min,
+                        double x_max,
+                        double y_min,
+                        double y_max,
+                        double z_min,
+                        double z_max,
+                        GaussPoint3D *points,
+                        int max_points,
+                        int *point_count);
 
 /*
  * Fill the two Gauss-Legendre points and weights on the reference interval

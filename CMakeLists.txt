@@ -6,7 +6,7 @@ project(efg_3d_electromagnetics_2006
 )
 
 # This repository is intentionally C11-only in the first didactic version.
-# No external libraries are used at this stage.
+# External numerical libraries remain optional validation paths.
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -22,6 +22,7 @@ add_library(efg_core
   src/global_stiffness.c
   src/gmres.c
   src/lagrange_system.c
+  src/lapack_dense_solver.c
   src/mat4.c
   src/mls.c
   src/mls_diagnostic.c
@@ -40,6 +41,15 @@ target_include_directories(efg_core
 
 if(UNIX)
   target_link_libraries(efg_core PUBLIC m)
+endif()
+
+find_package(LAPACK QUIET)
+if(LAPACK_FOUND)
+  target_compile_definitions(efg_core PUBLIC EFG_HAVE_LAPACK=1)
+  target_link_libraries(efg_core PUBLIC ${LAPACK_LIBRARIES})
+  message(STATUS "LAPACK found: enabling optional lapack-dense solver")
+else()
+  message(STATUS "LAPACK not found: lapack-dense solver will report unavailable")
 endif()
 
 add_executable(smoke_test
@@ -339,6 +349,15 @@ target_link_libraries(test_gmres
     efg_core
 )
 
+add_executable(test_lapack_dense_solver
+  tests/test_lapack_dense_solver.c
+)
+
+target_link_libraries(test_lapack_dense_solver
+  PRIVATE
+    efg_core
+)
+
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(efg_core PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_mls_diagnostic PRIVATE -Wall -Wextra -Wpedantic)
@@ -346,6 +365,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(test_sparse_global_stiffness PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_lagrange_augmented_sparse PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(test_gmres PRIVATE -Wall -Wextra -Wpedantic)
+  target_compile_options(test_lapack_dense_solver PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(smoke_test PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(reproduce_analytical_slice PRIVATE -Wall -Wextra -Wpedantic)
   target_compile_options(reproduce_cube_smoke PRIVATE -Wall -Wextra -Wpedantic)
@@ -405,3 +425,4 @@ add_test(NAME test_sparse_matrix            COMMAND test_sparse_matrix)
 add_test(NAME test_sparse_global_stiffness  COMMAND test_sparse_global_stiffness)
 add_test(NAME test_lagrange_augmented_sparse COMMAND test_lagrange_augmented_sparse)
 add_test(NAME test_gmres COMMAND test_gmres)
+add_test(NAME test_lapack_dense_solver COMMAND test_lapack_dense_solver)

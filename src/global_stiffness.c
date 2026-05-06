@@ -14,6 +14,39 @@ static void zero_dense_matrix(double *K, int node_count)
     }
 }
 
+static int initial_local_entry_capacity(int node_count, int quadrature_order)
+{
+    const int qpts = quadrature_order * quadrature_order * quadrature_order;
+    const int active_cap = (node_count < 64) ? node_count : 64;
+
+    return qpts * active_cap * active_cap;
+}
+
+static int grow_local_entries(StiffnessEntry **entries, int *capacity)
+{
+    StiffnessEntry *grown = NULL;
+    int new_capacity;
+
+    if (entries == NULL || *entries == NULL || capacity == NULL ||
+        *capacity <= 0) {
+        return GLOBAL_STIFFNESS_INVALID_ARGUMENT;
+    }
+
+    new_capacity = *capacity * 2;
+    if (new_capacity <= *capacity) {
+        return GLOBAL_STIFFNESS_ALLOCATION_FAILED;
+    }
+
+    grown = realloc(*entries, (size_t)new_capacity * sizeof((*entries)[0]));
+    if (grown == NULL) {
+        return GLOBAL_STIFFNESS_ALLOCATION_FAILED;
+    }
+
+    *entries = grown;
+    *capacity = new_capacity;
+    return GLOBAL_STIFFNESS_OK;
+}
+
 /*
  * Assemble a dense global stiffness matrix from regular cubic cells.
  *
@@ -35,6 +68,39 @@ int global_stiffness_assemble_dense(const Node3D *nodes,
                                     int nz_cells,
                                     double *K)
 {
+    return global_stiffness_assemble_dense_with_order(nodes, node_count,
+                                                      xmin, xmax,
+                                                      ymin, ymax,
+                                                      zmin, zmax,
+                                                      nx_cells, ny_cells,
+                                                      nz_cells,
+                                                      2,
+                                                      K);
+}
+
+/*
+ * Assemble the dense global stiffness matrix for Eq. (8).
+ *
+ * Article equation: Eq. (8), mapped in docs/05_mapa_equacoes_codigo.md.
+ * Formula reference: docs/03_resultados_numericos.md, section 3.3.
+ * Mathematical meaning: global K_ij obtained by summing all cell integrals of
+ * grad(Phi_i) dot grad(Phi_j), with an explicit Gauss order for integration
+ * sensitivity studies.
+ */
+int global_stiffness_assemble_dense_with_order(const Node3D *nodes,
+                                               int node_count,
+                                               double xmin,
+                                               double xmax,
+                                               double ymin,
+                                               double ymax,
+                                               double zmin,
+                                               double zmax,
+                                               int nx_cells,
+                                               int ny_cells,
+                                               int nz_cells,
+                                               int quadrature_order,
+                                               double *K)
+{
     int max_local_entries;
     StiffnessEntry *local_entries = NULL;
     double dx;
@@ -55,13 +121,19 @@ int global_stiffness_assemble_dense(const Node3D *nodes,
         return GLOBAL_STIFFNESS_INVALID_CELLS;
     }
 
+    if (quadrature_order < GAUSS_LEGENDRE_MIN_ORDER ||
+        quadrature_order > GAUSS_LEGENDRE_MAX_ORDER) {
+        return GLOBAL_STIFFNESS_INVALID_ARGUMENT;
+    }
+
     for (int i = 0; i < node_count; ++i) {
         if (nodes[i].support_radius <= 0.0) {
             return GLOBAL_STIFFNESS_INVALID_SUPPORT_RADIUS;
         }
     }
 
-    max_local_entries = GAUSS_LEGENDRE_ORDER2_CUBE_POINTS * node_count * node_count;
+    max_local_entries = initial_local_entry_capacity(node_count,
+                                                     quadrature_order);
     dx = (xmax - xmin) / (double)nx_cells;
     dy = (ymax - ymin) / (double)ny_cells;
     dz = (zmax - zmin) / (double)nz_cells;
@@ -81,19 +153,34 @@ int global_stiffness_assemble_dense(const Node3D *nodes,
 
             for (int iz = 0; iz < nz_cells; ++iz) {
                 int local_count = 0;
+                int local_status;
                 const double cell_zmin = zmin + ((double)iz * dz);
                 const double cell_zmax = cell_zmin + dz;
-                const int local_status = stiffness_assemble_cell(nodes,
-                                                                 node_count,
-                                                                 cell_xmin,
-                                                                 cell_xmax,
-                                                                 cell_ymin,
-                                                                 cell_ymax,
-                                                                 cell_zmin,
-                                                                 cell_zmax,
-                                                                 local_entries,
-                                                                 max_local_entries,
-                                                                 &local_count);
+
+                do {
+                    local_status =
+                        stiffness_assemble_cell_with_order(nodes,
+                                                           node_count,
+                                                           cell_xmin,
+                                                           cell_xmax,
+                                                           cell_ymin,
+                                                           cell_ymax,
+                                                           cell_zmin,
+                                                           cell_zmax,
+                                                           quadrature_order,
+                                                           local_entries,
+                                                           max_local_entries,
+                                                           &local_count);
+                    if (local_status == STIFFNESS_OUTPUT_CAPACITY_TOO_SMALL) {
+                        if (grow_local_entries(&local_entries,
+                                               &max_local_entries)
+                            != GLOBAL_STIFFNESS_OK) {
+                            free(local_entries);
+                            zero_dense_matrix(K, node_count);
+                            return GLOBAL_STIFFNESS_ALLOCATION_FAILED;
+                        }
+                    }
+                } while (local_status == STIFFNESS_OUTPUT_CAPACITY_TOO_SMALL);
 
                 if (local_status != STIFFNESS_OK) {
                     free(local_entries);
@@ -134,6 +221,38 @@ int global_stiffness_assemble_sparse_coo(const Node3D *nodes,
                                           int nz_cells,
                                           SparseCOO *coo)
 {
+    return global_stiffness_assemble_sparse_coo_with_order(nodes, node_count,
+                                                           xmin, xmax,
+                                                           ymin, ymax,
+                                                           zmin, zmax,
+                                                           nx_cells, ny_cells,
+                                                           nz_cells,
+                                                           2,
+                                                           coo);
+}
+
+/*
+ * Assemble the sparse COO global stiffness matrix for Eq. (8).
+ *
+ * Article equation: Eq. (8), mapped in docs/05_mapa_equacoes_codigo.md.
+ * Formula reference: docs/03_resultados_numericos.md, section 3.3.
+ * Mathematical meaning: sparse accumulation of the same global K_ij integral,
+ * leaving duplicate COO entries to be summed during CSR conversion.
+ */
+int global_stiffness_assemble_sparse_coo_with_order(const Node3D *nodes,
+                                                    int node_count,
+                                                    double xmin,
+                                                    double xmax,
+                                                    double ymin,
+                                                    double ymax,
+                                                    double zmin,
+                                                    double zmax,
+                                                    int nx_cells,
+                                                    int ny_cells,
+                                                    int nz_cells,
+                                                    int quadrature_order,
+                                                    SparseCOO *coo)
+{
     int max_local_entries;
     StiffnessEntry *local_entries = NULL;
     double dx;
@@ -152,13 +271,19 @@ int global_stiffness_assemble_sparse_coo(const Node3D *nodes,
         return GLOBAL_STIFFNESS_INVALID_CELLS;
     }
 
+    if (quadrature_order < GAUSS_LEGENDRE_MIN_ORDER ||
+        quadrature_order > GAUSS_LEGENDRE_MAX_ORDER) {
+        return GLOBAL_STIFFNESS_INVALID_ARGUMENT;
+    }
+
     for (int i = 0; i < node_count; ++i) {
         if (nodes[i].support_radius <= 0.0) {
             return GLOBAL_STIFFNESS_INVALID_SUPPORT_RADIUS;
         }
     }
 
-    max_local_entries = GAUSS_LEGENDRE_ORDER2_CUBE_POINTS * node_count * node_count;
+    max_local_entries = initial_local_entry_capacity(node_count,
+                                                     quadrature_order);
     dx = (xmax - xmin) / (double)nx_cells;
     dy = (ymax - ymin) / (double)ny_cells;
     dz = (zmax - zmin) / (double)nz_cells;
@@ -178,19 +303,33 @@ int global_stiffness_assemble_sparse_coo(const Node3D *nodes,
 
             for (int iz = 0; iz < nz_cells; ++iz) {
                 int local_count = 0;
+                int local_status;
                 const double cell_zmin = zmin + ((double)iz * dz);
                 const double cell_zmax = cell_zmin + dz;
-                const int local_status = stiffness_assemble_cell(nodes,
-                                                                 node_count,
-                                                                 cell_xmin,
-                                                                 cell_xmax,
-                                                                 cell_ymin,
-                                                                 cell_ymax,
-                                                                 cell_zmin,
-                                                                 cell_zmax,
-                                                                 local_entries,
-                                                                 max_local_entries,
-                                                                 &local_count);
+
+                do {
+                    local_status =
+                        stiffness_assemble_cell_with_order(nodes,
+                                                           node_count,
+                                                           cell_xmin,
+                                                           cell_xmax,
+                                                           cell_ymin,
+                                                           cell_ymax,
+                                                           cell_zmin,
+                                                           cell_zmax,
+                                                           quadrature_order,
+                                                           local_entries,
+                                                           max_local_entries,
+                                                           &local_count);
+                    if (local_status == STIFFNESS_OUTPUT_CAPACITY_TOO_SMALL) {
+                        if (grow_local_entries(&local_entries,
+                                               &max_local_entries)
+                            != GLOBAL_STIFFNESS_OK) {
+                            free(local_entries);
+                            return GLOBAL_STIFFNESS_ALLOCATION_FAILED;
+                        }
+                    }
+                } while (local_status == STIFFNESS_OUTPUT_CAPACITY_TOO_SMALL);
 
                 if (local_status != STIFFNESS_OK) {
                     free(local_entries);

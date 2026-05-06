@@ -32,6 +32,20 @@ int global_stiffness_assemble_dense(const Node3D *nodes,
                                     int nz_cells,
                                     double *K);
 
+int global_stiffness_assemble_dense_with_order(const Node3D *nodes,
+                                               int node_count,
+                                               double xmin,
+                                               double xmax,
+                                               double ymin,
+                                               double ymax,
+                                               double zmin,
+                                               double zmax,
+                                               int nx_cells,
+                                               int ny_cells,
+                                               int nz_cells,
+                                               int quadrature_order,
+                                               double *K);
+
 /*
  * Assemble the global stiffness matrix into a COO sparse structure.
  *
@@ -56,5 +70,19 @@ int global_stiffness_assemble_sparse_coo(const Node3D *nodes,
                                           int ny_cells,
                                           int nz_cells,
                                           SparseCOO *coo);
+
+int global_stiffness_assemble_sparse_coo_with_order(const Node3D *nodes,
+                                                    int node_count,
+                                                    double xmin,
+                                                    double xmax,
+                                                    double ymin,
+                                                    double ymax,
+                                                    double zmin,
+                                                    double zmax,
+                                                    int nx_cells,
+                                                    int ny_cells,
+                                                    int nz_cells,
+                                                    int quadrature_order,
+                                                    SparseCOO *coo);
 
 #endif

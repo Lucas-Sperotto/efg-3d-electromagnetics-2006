@@ -36,4 +36,17 @@ int stiffness_assemble_cell(const Node3D *nodes,
                             int max_entries,
                             int *entry_count);
 
+int stiffness_assemble_cell_with_order(const Node3D *nodes,
+                                       int node_count,
+                                       double xmin,
+                                       double xmax,
+                                       double ymin,
+                                       double ymax,
+                                       double zmin,
+                                       double zmax,
+                                       int quadrature_order,
+                                       StiffnessEntry *entries,
+                                       int max_entries,
+                                       int *entry_count);
+
 #endif
