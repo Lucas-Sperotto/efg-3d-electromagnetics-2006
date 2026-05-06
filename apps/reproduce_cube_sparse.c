@@ -36,6 +36,7 @@ typedef struct CubeSparseReport {
     int gmres_converged;
     int gmres_iterations;
     double support_mean;
+    double max_cond_estimate;
     double residual_initial;
     double residual_final;
     double relative_error_global;
@@ -48,7 +49,9 @@ typedef struct CubeSparseReport {
 typedef enum CubeSparseSelection {
     CUBE_SPARSE_ALL,
     CUBE_SPARSE_SANITY,
-    CUBE_SPARSE_TARGET
+    CUBE_SPARSE_TARGET,
+    CUBE_SPARSE_REFINE13,
+    CUBE_SPARSE_REFINE15
 } CubeSparseSelection;
 
 static double elapsed_s(clock_t start)
@@ -72,6 +75,7 @@ static void report_init(CubeSparseReport *report, const char *label)
     report->gmres_converged = 0;
     report->gmres_iterations = -1;
     report->support_mean = NAN;
+    report->max_cond_estimate = NAN;
     report->residual_initial = NAN;
     report->residual_final = NAN;
     report->relative_error_global = NAN;
@@ -96,6 +100,7 @@ static void print_required_report(const CubeSparseReport *report)
     printf("support_lt_4: %d\n", report->support_lt_4);
     printf("support_lt_8: %d\n", report->support_lt_8);
     printf("mls_failures: %d\n", report->mls_failures);
+    printf("max_cond_estimate: %.6e\n", report->max_cond_estimate);
     printf("gmres_converged: %s\n", report->gmres_converged ? "YES" : "NO");
     printf("gmres_iterations: %d\n", report->gmres_iterations);
     printf("residual_initial: %.6e\n", report->residual_initial);
@@ -120,7 +125,8 @@ static int write_report_csv_header(void)
     fprintf(file,
             "label,nodes,constraints,augmented_size,K_nnz,A_aug_nnz,"
             "support_min,support_mean,support_max,support_lt_4,"
-            "support_lt_8,mls_failures,gmres_converged,gmres_iterations,"
+            "support_lt_8,mls_failures,max_cond_estimate,"
+            "gmres_converged,gmres_iterations,"
             "residual_initial,residual_final,relative_error_global,"
             "relative_error_interior,max_abs_error,assembly_time_s,"
             "solve_time_s\n");
@@ -143,7 +149,7 @@ static int append_required_report_csv(const CubeSparseReport *report)
     }
 
     fprintf(file,
-            "\"%s\",%d,%d,%d,%d,%d,%d,%.17g,%d,%d,%d,%d,%s,%d,"
+            "\"%s\",%d,%d,%d,%d,%d,%d,%.17g,%d,%d,%d,%d,%.17g,%s,%d,"
             "%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n",
             report->label,
             report->nodes,
@@ -157,6 +163,7 @@ static int append_required_report_csv(const CubeSparseReport *report)
             report->support_lt_4,
             report->support_lt_8,
             report->mls_failures,
+            report->max_cond_estimate,
             report->gmres_converged ? "YES" : "NO",
             report->gmres_iterations,
             report->residual_initial,
@@ -187,12 +194,16 @@ static void print_usage(const char *program_name)
     printf("  %s\n", program_name);
     printf("  %s --case sanity\n", program_name);
     printf("  %s --case target\n", program_name);
+    printf("  %s --case refine13\n", program_name);
+    printf("  %s --case refine15\n", program_name);
     printf("  %s --case all\n", program_name);
     printf("\n");
     printf("Cases:\n");
     printf("  sanity  regular 5x5x5 nodes, 5x5x5 integration cells, dense comparison\n");
     printf("  target  regular 11x11x11 nodes, 15x15x15 integration cells, GMRES\n");
-    printf("  all     run sanity followed by target (default)\n");
+    printf("  refine13 regular 13x13x13 nodes, 15x15x15 integration cells, GMRES\n");
+    printf("  refine15 regular 15x15x15 nodes, 15x15x15 integration cells, GMRES\n");
+    printf("  all     run sanity, target, refine13, and refine15 (default)\n");
 }
 
 static int parse_args(int argc, char **argv, CubeSparseSelection *selection)
@@ -216,6 +227,14 @@ static int parse_args(int argc, char **argv, CubeSparseSelection *selection)
         }
         if (strcmp(argv[2], "target") == 0) {
             *selection = CUBE_SPARSE_TARGET;
+            return 0;
+        }
+        if (strcmp(argv[2], "refine13") == 0) {
+            *selection = CUBE_SPARSE_REFINE13;
+            return 0;
+        }
+        if (strcmp(argv[2], "refine15") == 0) {
+            *selection = CUBE_SPARSE_REFINE15;
             return 0;
         }
         if (strcmp(argv[2], "all") == 0) {
@@ -354,6 +373,7 @@ static int run_case(const char *label,
     report.support_lt_4  = diag.n_invalid;
     report.support_lt_8  = diag.n_invalid + diag.n_suspect;
     report.mls_failures  = diag.n_moment_fail;
+    report.max_cond_estimate = diag.max_cond;
 
     if (report.support_lt_4 > 0) {
         fprintf(stderr, "[%s] STOP: support_lt_4 = %d (> 0)\n",
@@ -721,7 +741,9 @@ done:
  *
  * Runs two cases by default:
  *   1. 5x5x5 sanity check  — compared against the dense solver.
- *   2. 11x11x11 main case  — GMRES only (dense solve is O(n^3) too slow).
+ *   2. 11x11x11 target     — GMRES only (dense solve is O(n^3) too slow).
+ *   3. 13x13x13 refinement — GMRES only, larger restart.
+ *   4. 15x15x15 refinement — GMRES only, larger restart.
  */
 int main(int argc, char **argv)
 {
@@ -764,6 +786,34 @@ int main(int argc, char **argv)
             /*gmres_tol=*/1e-9,
             /*restart=*/200,
             /*max_iter=*/10000,
+            /*sample_n=*/11,
+            /*dense_cmp=*/0);
+    }
+
+    if (selection == CUBE_SPARSE_ALL ||
+        selection == CUBE_SPARSE_REFINE13) {
+        status |= run_case(
+            "13x13x13 refine13 (15x15x15 integration cells, GMRES only)",
+            /*L=*/10.0, /*V0=*/10.0,
+            /*nx,ny,nz=*/13, 13, 13,
+            /*cells=*/15, 15, 15,
+            /*gmres_tol=*/1e-9,
+            /*restart=*/300,
+            /*max_iter=*/20000,
+            /*sample_n=*/11,
+            /*dense_cmp=*/0);
+    }
+
+    if (selection == CUBE_SPARSE_ALL ||
+        selection == CUBE_SPARSE_REFINE15) {
+        status |= run_case(
+            "15x15x15 refine15 (15x15x15 integration cells, GMRES only)",
+            /*L=*/10.0, /*V0=*/10.0,
+            /*nx,ny,nz=*/15, 15, 15,
+            /*cells=*/15, 15, 15,
+            /*gmres_tol=*/1e-9,
+            /*restart=*/300,
+            /*max_iter=*/20000,
             /*sample_n=*/11,
             /*dense_cmp=*/0);
     }

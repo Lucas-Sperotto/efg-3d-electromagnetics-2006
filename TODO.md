@@ -361,24 +361,22 @@ Resolver o problema do cubo com refinamento suficiente para aproximar a figura d
 
 Casos uniformes iniciais:
 
-```text
-11x11x11 nós, 15x15x15 células
-13x13x13 nós, 15x15x15 células
-15x15x15 nós, 15x15x15 células
-```
+- [x] 11x11x11 nós, 15x15x15 células — executado com `reproduce_cube_sparse`.
+- [x] 13x13x13 nós, 15x15x15 células — executado com `reproduce_cube_sparse --case refine13`.
+- [x] 15x15x15 nós, 15x15x15 células — executado com `reproduce_cube_sparse --case refine15`.
 
 Depois, testar nuvens não uniformes somente após diagnóstico de conectividade e condicionamento.
 
 ### 9.3. Métricas
 
-- [ ] erro relativo discreto global;
-- [ ] erro relativo discreto interno;
-- [ ] erro máximo absoluto;
+- [x] erro relativo discreto global;
+- [x] erro relativo discreto interno;
+- [x] erro máximo absoluto;
 - [ ] erro no plano `x = 5.33`;
 - [ ] erro em regiões próximas às arestas superiores;
-- [ ] número de iterações GMRES;
-- [ ] tempo de montagem;
-- [ ] tempo de solução;
+- [x] número de iterações GMRES;
+- [x] tempo de montagem;
+- [x] tempo de solução;
 - [ ] memória aproximada.
 
 ---
