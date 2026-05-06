@@ -296,6 +296,15 @@ static int export_plane_csv(const PlaneExportConfig *config,
     printf("  exported points:        %d\n", total_points);
     printf("  valid points:           %d\n", valid_points);
     printf("  MLS failures:           %d\n", mls_failures);
+    /*
+     * The max absolute error on the plane is expected to be ~V0, similar to
+     * the 3D volume error. This occurs at the boundaries of the plane slice
+     * (e.g., y=0, z=10) where the Dirichlet conditions are discontinuous (V=0
+     * from a side wall vs V=V0 from the top wall). The mean and relative
+     * errors over the whole plane are more representative. A future step
+     * could be to compute metrics for the interior of the plane as well,
+     * inside the visualization script.
+     */
     printf("  max abs error:          %.6e\n", max_abs_error);
     printf("  mean abs error:         %.6e\n",
            (valid_points > 0) ? sum_abs_error / (double)valid_points : NAN);
