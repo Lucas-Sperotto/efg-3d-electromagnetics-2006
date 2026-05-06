@@ -470,11 +470,35 @@ A nuvem reduziu o erro interior em relação ao 11×11×11 regular com número s
 e ficou próxima do 15×15×15 regular com menos nós. A estratégia de adicionar somente nós
 interiores-em-xy na zona superior evita o problema de dominância por restrições.
 
-### 11.3. Próximos passos opcionais
+### 11.3. Refinamento da nuvem article cloud (2026-05-06)
+
+| Parâmetro | Valor |
+| --- | --- |
+| base_n | 13 |
+| top_n | 15 |
+| n_extra_slices | 4 |
+| z_frac | 0,30 |
+| Nós totais | 3089 |
+| Restrições | 1082 |
+| support_lt_4 | 0 |
+| mls_failures | 0 |
+| GMRES convergiu | YES |
+| GMRES iterações | 832 |
+| Erro relativo interior 3D | 2,78 % |
+| Erro relativo interior do plano | 4,44 % |
+| Erro relativo na janela central | 2,90 % |
+
+O refinamento melhorou levemente o erro 3D interior em relação ao 15×15×15 regular
+(`2,78 %` contra `2,80 %`) e reduziu o erro relativo interior do plano (`4,44 %`
+contra `4,55 %`). Porém, piorou a janela central e elevou muito o custo do GMRES
+(`832` iterações). Portanto, ainda não substitui o caso regular como figura
+principal.
+
+### 11.4. Próximos passos opcionais
 
 - [ ] Ajustar z_frac e n_extra_slices para concentrar mais nós na região de gradiente crítico.
-- [ ] Testar base_n=13, top_n=15 para avaliar convergência da nuvem não uniforme.
-- [ ] Avaliar necessidade de precondicionador para reduzir as 391 iterações do GMRES.
+- [x] Testar base_n=13, top_n=15 para avaliar convergência da nuvem não uniforme.
+- [ ] Avaliar necessidade de precondicionador para reduzir as 832 iterações do GMRES.
 - [ ] Evitar nuvens dominadas por pontos de superfície (razão documentada no §1).
 
 ---

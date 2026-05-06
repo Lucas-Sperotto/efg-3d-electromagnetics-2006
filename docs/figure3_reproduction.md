@@ -20,10 +20,10 @@ as linhas analíticas no interior do domínio, mesmo com os fortes gradientes
 próximos aos cantos superiores da caixa.
 
 **Decisão desta reprodução:** a figura principal deve usar o caso regular
-`15x15x15`. Ele é a malha regular mais refinada, tem menor erro no plano do
-que a nuvem não uniforme atual e exige muito menos iterações de GMRES. A nuvem
-`nonuniform` é documentada como comparação suplementar, não como figura
-principal.
+`15x15x15`. Ele é a malha regular mais refinada, tem a melhor concordância na
+janela central e exige muito menos iterações de GMRES. As nuvens `nonuniform`
+e `nonuniform_refine` são documentadas como comparações suplementares, não
+como figura principal.
 
 ---
 
@@ -69,7 +69,7 @@ A solução de referência é a série analítica truncada com 25 termos por dim
 | `data/output/figures/cube_plane_x_5_33_comparison.png` | Painel comparativo com os três mapas preenchidos |
 | `data/output/figures/cube_plane_x_5_33_metrics.txt` | Métricas completas do plano |
 | `data/output/figures/cube_plane_x_5_33_metrics.csv` | As mesmas métricas em formato CSV |
-| `data/output/figure3_region_error_summary.csv` | Comparação por região entre `regular_refine15` e `nonuniform_article_cloud` |
+| `data/output/figure3_region_error_summary.csv` | Comparação por região entre regular e nuvens não uniformes |
 
 Os arquivos de figuras são ignorados pelo `.gitignore`; o CSV de dados e os
 arquivos de métricas também. Todos podem ser regenerados executando:
@@ -126,6 +126,9 @@ faixas no plano:
 | nonuniform | plano interior | 9801 | 4,5780 V | 0,04278 V | 5,1413 % |
 | nonuniform | upper edge open | 200 | 4,5780 V | 0,80546 V | 20,7600 % |
 | nonuniform | janela central | 3721 | 0,09069 V | 0,01942 V | 0,9919 % |
+| nonuniform refine | plano interior | 9801 | 4,2374 V | 0,05639 V | 4,4404 % |
+| nonuniform refine | upper edge open | 200 | 4,2374 V | 0,62385 V | 17,0825 % |
+| nonuniform refine | janela central | 3721 | 0,17985 V | 0,05339 V | 2,8962 % |
 
 A janela central confirma a concordância visual da Figura 3: o erro relativo
 fica abaixo de 1 % nos dois casos. A faixa superior concentra a discrepância,
@@ -208,10 +211,13 @@ direções e não adapta a resolução ao gradiente local. Como consequência di
 
 A grade regular é suficiente para a comparação qualitativa da Figura 3, mas
 não é suficiente para reproduzir os números quantitativos reportados no artigo.
-Na nuvem não uniforme atual, o erro 3D interior fica próximo ao regular
-`15x15x15` (`2,96 %` contra `2,80 %`), mas o erro interior do plano ainda é
-maior (`5,14 %` contra `4,55 %`) e o GMRES exige 391 iterações. Por isso, a
-figura principal permanece sendo o caso regular.
+Na nuvem não uniforme refinada (`base_n=13`, `top_n=15`), o erro 3D interior
+fica ligeiramente abaixo do regular `15x15x15` (`2,78 %` contra `2,80 %`) e o
+erro relativo interior do plano cai para `4,44 %`. Porém, a janela central
+piora para `2,90 %` e o GMRES sobe para `832` iterações. Por isso, a figura
+principal permanece sendo o caso regular, enquanto a nuvem refinada é uma
+evidência de convergência que precisa de precondicionamento ou melhor
+distribuição de pontos.
 
 ### 7.2 Série analítica truncada como referência
 
@@ -335,6 +341,20 @@ Parâmetros executados: base_n = 11, top_n = 13, n_extra_slices = 4, z_frac = 0,
 | Tempo de montagem | 0,67 s | 0,41 s | 0,58 s |
 | Tempo de solução | 0,026 s | 0,008 s | 0,150 s |
 
+O refinamento `base_n=13`, `top_n=15` acrescenta:
+
+| Métrica | Nuvem refinada |
+| --- | --- |
+| Nós totais | 3 089 |
+| Restrições | 1 082 |
+| support_lt_4 | 0 |
+| mls_failures | 0 |
+| GMRES iterações | 832 |
+| Erro relativo interior 3D | 2,78 % |
+| max_abs_error 3D | 0,941 V |
+| Tempo de montagem | 0,83 s |
+| Tempo de solução | 0,716 s |
+
 ### 9.3. Análise comparativa
 
 **Melhora em relação ao 11×11×11 regular:** a nuvem não uniforme (1 974 nós) reduziu o
@@ -368,5 +388,6 @@ conectividade local — o sistema fica menos uniformemente condicionado sem prec
    nossa norma discreta não é diretamente comparável.
 
 A nuvem atual demonstra melhora qualitativa e valida o pipeline para distribuições não
-uniformes. O refinamento para atingir os valores quantitativos do artigo é um próximo passo
-identificado no `TODO.md` §11.3.
+uniformes. O refinamento `base_n=13`, `top_n=15` melhora a métrica 3D interior, mas
+expõe um gargalo claro de GMRES; o próximo passo natural é precondicionamento ou uma
+distribuição de pontos mais focada nas arestas superiores.

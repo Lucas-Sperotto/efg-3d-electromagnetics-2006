@@ -1,5 +1,100 @@
 # TEST_REPORT — Relatório de testes e execuções
 
+## Nuvem não uniforme refinada `--case nonuniform_refine`
+
+Data: 2026-05-06 07:18:17 -03
+
+Comandos:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --help
+./build/reproduce_cube_sparse --case nonuniform_refine
+python3 scripts/plot_cube_plane.py --input data/output/cube_plane_x_5_33_nonuniform_refine.csv --output-dir data/output/figures_nonuniform_refine --all
+```
+
+Build e testes:
+
+```text
+[100%] Built target test_gmres
+100% tests passed, 0 tests failed out of 28
+```
+
+Saída do caso:
+
+```text
+--- Plane export ---
+  csv:                    data/output/cube_plane_x_5_33_nonuniform_refine.csv
+  exported points:        10201
+  valid points:           10201
+  MLS failures:           0
+  max abs error:          8.531163e+00
+  mean abs error:         6.089040e-02
+  relative error plane:   6.801632e-02
+  V_num min:              -6.190531e-02
+  V_num max:              1.060400e+01
+  V_exact min:            0.000000e+00
+  V_exact max:            1.185991e+01
+
+=== nonuniform refine cloud (base=13 top=15 slices=4 z_frac=0.30) ===
+
+--- Problem ---
+  nodes:                  3089
+  constraints:            1082
+  augmented size:         4171
+
+--- MLS diagnostic ---
+  invalid (active < 4):   0
+  suspect (active < 8):   0
+  moment matrix failures: 0
+  min active nodes:       8
+  max active nodes:       54
+  mean active nodes:      26.82
+  max cond estimate:      1.811e+03
+
+--- Sparse assembly ---
+  K nnz  (|v| > 0):       400859
+  A_aug CSR nnz:          447167
+  assembly time:          0.828 s
+
+--- GMRES ---
+  iterations:             832
+  residual init:          1.700000e+02
+  residual final:         1.684110e-07
+  rel residual:           9.907e-10
+  converged:              YES
+  solution time:          0.716 s
+
+--- Errors ---
+  max abs error:          9.407446e-01
+  rel error (global):     3.284785e-02
+  rel error (interior):   2.776750e-02
+```
+
+Métricas do plano refinado:
+
+```text
+plane relative error:     6.8016324822001886e-02
+interior relative error:  4.4404035267538333e-02
+interior mean abs error:  5.6391008910398825e-02
+central window rel error: 2.8961925176815718e-02
+upper edge open rel:      1.7082540663774520e-01
+```
+
+Conclusão:
+
+```text
+PASSOU, mas com alerta de custo GMRES.
+```
+
+Interpretação: o refinamento melhora levemente o erro 3D interior em relação ao
+regular `15x15x15` (`2,776750 %` contra `2,801970 %`) e melhora o erro relativo
+interior do plano (`4,4404 %` contra `4,5519 %`), mas piora a janela central e
+eleva o GMRES para `832` iterações.
+
+---
+
 ## Documentação final da Figura 3
 
 Data: 2026-05-06 07:10:45 -03

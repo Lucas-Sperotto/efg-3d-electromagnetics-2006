@@ -22,6 +22,7 @@
 #define REPORT_CSV_PATH "data/output/reproduce_cube_sparse_report.csv"
 #define PLANE15_CSV_PATH "data/output/cube_plane_x_5_33_refine15.csv"
 #define NONUNIFORM_CSV_PATH "data/output/cube_plane_x_5_33_nonuniform.csv"
+#define NONUNIFORM_REFINE_CSV_PATH "data/output/cube_plane_x_5_33_nonuniform_refine.csv"
 
 typedef struct CubeSparseReport {
     const char *label;
@@ -55,7 +56,8 @@ typedef enum CubeSparseSelection {
     CUBE_SPARSE_REFINE13,
     CUBE_SPARSE_REFINE15,
     CUBE_SPARSE_PLANE15,
-    CUBE_SPARSE_NONUNIFORM
+    CUBE_SPARSE_NONUNIFORM,
+    CUBE_SPARSE_NONUNIFORM_REFINE
 } CubeSparseSelection;
 
 typedef struct PlaneExportConfig {
@@ -337,6 +339,7 @@ static void print_usage(const char *program_name)
     printf("  %s --case refine15\n", program_name);
     printf("  %s --case plane15\n", program_name);
     printf("  %s --case nonuniform\n", program_name);
+    printf("  %s --case nonuniform_refine\n", program_name);
     printf("  %s --case all\n", program_name);
     printf("\n");
     printf("Cases:\n");
@@ -346,6 +349,7 @@ static void print_usage(const char *program_name)
     printf("  refine15   regular 15x15x15 nodes, 15x15x15 integration cells, GMRES\n");
     printf("  plane15    solve refine15 and export x=5.33 plane CSV\n");
     printf("  nonuniform non-uniform cloud (Fig. 2), export x=5.33 plane CSV\n");
+    printf("  nonuniform_refine non-uniform cloud base=13 top=15, export plane CSV\n");
     printf("  all        run sanity, target, refine13, and refine15 (default)\n");
 }
 
@@ -386,6 +390,10 @@ static int parse_args(int argc, char **argv, CubeSparseSelection *selection)
         }
         if (strcmp(argv[2], "nonuniform") == 0) {
             *selection = CUBE_SPARSE_NONUNIFORM;
+            return 0;
+        }
+        if (strcmp(argv[2], "nonuniform_refine") == 0) {
+            *selection = CUBE_SPARSE_NONUNIFORM_REFINE;
             return 0;
         }
         if (strcmp(argv[2], "all") == 0) {
@@ -1435,6 +1443,27 @@ int main(int argc, char **argv)
             "nonuniform cloud (base=11 top=13 slices=4 z_frac=0.30)",
             /*L=*/10.0, /*V0=*/10.0,
             /*base_n=*/11, /*top_n=*/13,
+            /*n_extra_slices=*/4, /*z_frac=*/0.30,
+            /*cells=*/15, 15, 15,
+            /*gmres_tol=*/1e-9,
+            /*restart=*/300,
+            /*max_iter=*/20000,
+            /*sample_n=*/11,
+            &plane_export);
+    }
+
+    if (selection == CUBE_SPARSE_NONUNIFORM_REFINE) {
+        const PlaneExportConfig plane_export = {
+            1,
+            5.33,
+            101,
+            101,
+            NONUNIFORM_REFINE_CSV_PATH
+        };
+        status |= run_case_nonuniform(
+            "nonuniform refine cloud (base=13 top=15 slices=4 z_frac=0.30)",
+            /*L=*/10.0, /*V0=*/10.0,
+            /*base_n=*/13, /*top_n=*/15,
             /*n_extra_slices=*/4, /*z_frac=*/0.30,
             /*cells=*/15, 15, 15,
             /*gmres_tol=*/1e-9,

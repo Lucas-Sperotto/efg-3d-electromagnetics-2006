@@ -1,5 +1,96 @@
 # CODEX_IMPLEMENTATION_LOG — Registro de implementação
 
+## 2026-05-06 07:18:17 -03 — Caso `nonuniform_refine`
+
+Objetivo da rodada:
+
+```text
+Executar a próxima etapa de nuvem não uniforme: base_n=13, top_n=15,
+n_extra_slices=4, z_frac=0.30.
+```
+
+Arquivos modificados:
+
+- `apps/reproduce_cube_sparse.c`
+- `TODO.md`
+- `docs/figure3_reproduction.md`
+- `docs/dev/TEST_REPORT.md`
+- `docs/dev/CODEX_IMPLEMENTATION_LOG.md`
+
+Arquivos gerados não versionados:
+
+- `data/output/cube_plane_x_5_33_nonuniform_refine.csv`
+- `data/output/figures_nonuniform_refine/`
+- `data/output/nonuniform_refinement_region_summary.csv`
+- `data/output/figure3_region_error_summary.csv`
+
+Resumo técnico:
+
+- Adicionado caso CLI:
+
+  ```bash
+  ./build/reproduce_cube_sparse --case nonuniform_refine
+  ```
+
+- O caso preserva a nuvem `nonuniform` anterior e adiciona uma variação
+  `base_n=13`, `top_n=15`.
+- Configuração:
+  - `n_extra_slices = 4`;
+  - `z_frac = 0.30`;
+  - integração `15x15x15`;
+  - GMRES `restart=300`, `max_iter=20000`;
+  - exportação do plano `x = 5.33`.
+
+Resultado:
+
+| Métrica | Valor |
+| --- | ---: |
+| nodes | 3089 |
+| constraints | 1082 |
+| augmented_size | 4171 |
+| K_nnz | 400859 |
+| A_aug_nnz | 447167 |
+| support_min | 8 |
+| support_mean | 26.818963 |
+| support_max | 54 |
+| support_lt_4 | 0 |
+| support_lt_8 | 0 |
+| mls_failures | 0 |
+| max_cond_estimate | 1.811399e+03 |
+| gmres_iterations | 832 |
+| residual_final | 1.684110e-07 |
+| relative_error_global | 3.284785e-02 |
+| relative_error_interior | 2.776750e-02 |
+| max_abs_error | 9.407446e-01 |
+| assembly_time_s | 0.827809 |
+| solve_time_s | 0.716326 |
+
+Plano `x = 5.33`:
+
+```text
+plane_relative_error:    6.801632e-02
+interior_relative_error: 4.440404e-02
+central_window_rel:      2.896193e-02
+upper_edge_open_rel:     1.708254e-01
+```
+
+Conclusão:
+
+- O caso passou todos os critérios de parada.
+- O erro 3D interior ficou ligeiramente melhor que o regular `15x15x15`
+  (`2,776750 %` contra `2,801970 %`).
+- O plano interior também melhorou levemente (`4,4404 %` contra `4,5519 %`).
+- A janela central piorou e o GMRES subiu para `832` iterações.
+
+Próxima etapa recomendada:
+
+```text
+Não avançar para nuvem maior ainda. Antes, avaliar precondicionador simples
+ou ajuste da distribuição de pontos para reduzir condicionamento/iterações.
+```
+
+---
+
 ## 2026-05-06 07:10:45 -03 — Documentação final da Figura 3
 
 Objetivo da rodada:
