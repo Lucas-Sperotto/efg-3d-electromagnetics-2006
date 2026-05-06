@@ -155,8 +155,14 @@ static int test_generate_dirichlet_points(void)
                             CUBE_PROBLEM_OK);
     failures += expect_code("3x3x3 Dirichlet generated count", point_count, 26);
 
+    int open_top_count = 0;
     for (int a = 0; a < point_count; ++a) {
         const int on_top = fabs(points[a].z - 10.0) <= TOLERANCE;
+        const int on_open_top = on_top &&
+                                fabs(points[a].x) > TOLERANCE &&
+                                fabs(points[a].x - 10.0) > TOLERANCE &&
+                                fabs(points[a].y) > TOLERANCE &&
+                                fabs(points[a].y - 10.0) > TOLERANCE;
         const int on_surface = fabs(points[a].x) <= TOLERANCE ||
                                fabs(points[a].x - 10.0) <= TOLERANCE ||
                                fabs(points[a].y) <= TOLERANCE ||
@@ -169,10 +175,11 @@ static int test_generate_dirichlet_points(void)
             ++failures;
         }
 
-        if (on_top) {
-            failures += expect_close("top face prescribed value", points[a].value, 10.0);
+        if (on_open_top) {
+            failures += expect_close("open top face prescribed value", points[a].value, 10.0);
+            ++open_top_count;
         } else {
-            failures += expect_close("non-top surface prescribed value", points[a].value, 0.0);
+            failures += expect_close("grounded boundary prescribed value", points[a].value, 0.0);
         }
 
         for (int b = a + 1; b < point_count; ++b) {
@@ -186,6 +193,12 @@ static int test_generate_dirichlet_points(void)
                 ++failures;
             }
         }
+    }
+
+    if (open_top_count != 1) {
+        fprintf(stderr, "expected exactly one open top point with V0, got %d\n",
+                open_top_count);
+        ++failures;
     }
 
     if (find_dirichlet_point(points, point_count, 5.0, 5.0, 5.0)) {

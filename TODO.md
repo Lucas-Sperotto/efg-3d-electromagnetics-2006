@@ -368,7 +368,7 @@ Casos uniformes iniciais:
 Nuvem não uniforme:
 
 - [x] base_n=11, top_n=13, n_extra_slices=4, z_frac=0.30 — executado com `reproduce_cube_sparse --case nonuniform`.
-  - 1974 nós, 762 restrições (38,6 % de superfície), erro interior 4,63 %, GMRES 428 iterações.
+  - 1974 nós, 762 restrições (38,6 % de superfície), erro interior 2,96 %, GMRES 391 iterações.
 
 ### 9.3. Métricas
 
@@ -376,7 +376,7 @@ Nuvem não uniforme:
 - [x] erro relativo discreto interno;
 - [x] erro máximo absoluto;
 - [x] erro no plano `x = 5.33`;
-- [ ] erro em regiões próximas às arestas superiores;
+- [x] erro em regiões próximas às arestas superiores;
 - [x] número de iterações GMRES;
 - [x] tempo de montagem;
 - [x] tempo de solução;
@@ -429,8 +429,14 @@ x = 5.33
   - sobreposição com `V_num` sólido e `V_exact` tracejado;
   - figura estilo artigo com fundo branco e níveis fixos `1,2,3,4,5,6,7,8,9,10`.
 
-- [ ] Comparar erro máximo com valor reportado no artigo.
-- [ ] Documentar divergências.
+- [x] Comparar erro máximo com valor reportado no artigo.
+- [x] Documentar divergências.
+
+  Concluído em `docs/figure3_reproduction.md`: a figura principal fica com o
+  caso regular `15x15x15`; a nuvem `nonuniform` é comparação suplementar.
+  Os valores do artigo (`1,40 %` e `0,15 V`) ainda não foram reproduzidos
+  quantitativamente. A divergência foi atribuída à grade regular, métrica de
+  erro discreta, série truncada e ausência de comparação digital pixel a pixel.
 
 ---
 
@@ -455,20 +461,20 @@ implementada e validada com `cube_generate_article_cloud`.
 | support_lt_4 | 0 |
 | mls_failures | 0 |
 | GMRES convergiu | YES |
-| GMRES iterações | 428 |
-| Erro relativo interior | 4,63 % |
-| Erro relativo interior 11×11×11 regular | 5,55 % |
-| Erro relativo interior 15×15×15 regular | 2,81 % |
+| GMRES iterações | 391 |
+| Erro relativo interior | 2,96 % |
+| Erro relativo interior 11×11×11 regular | 5,13 % |
+| Erro relativo interior 15×15×15 regular | 2,80 % |
 
-A nuvem reduziu o erro interior em relação ao 11×11×11 regular com número semelhante de nós,
-confirmando que a estratégia de adicionar somente nós interiores-em-xy na zona superior evita
-o problema de dominância por restrições.
+A nuvem reduziu o erro interior em relação ao 11×11×11 regular com número semelhante de nós
+e ficou próxima do 15×15×15 regular com menos nós. A estratégia de adicionar somente nós
+interiores-em-xy na zona superior evita o problema de dominância por restrições.
 
 ### 11.3. Próximos passos opcionais
 
 - [ ] Ajustar z_frac e n_extra_slices para concentrar mais nós na região de gradiente crítico.
 - [ ] Testar base_n=13, top_n=15 para avaliar convergência da nuvem não uniforme.
-- [ ] Avaliar necessidade de precondicionador para reduzir as 428 iterações do GMRES.
+- [ ] Avaliar necessidade de precondicionador para reduzir as 391 iterações do GMRES.
 - [ ] Evitar nuvens dominadas por pontos de superfície (razão documentada no §1).
 
 ---
@@ -559,11 +565,16 @@ O projeto será considerado cientificamente consistente quando conseguir:
 
 
 
-## Importante - avaliar
+## Importante - avaliado
 
-[ ] Para validação contra a solução analítica seno-seno-sinh do problema do cubo,
+[x] Para validação contra a solução analítica seno-seno-sinh do problema do cubo,
 as arestas superiores devem herdar a condição das paredes laterais, V = 0.
 A condição V = V0 é aplicada somente no interior aberto da face z = L.
 Essa política evita impor, no mesmo ponto geométrico, duas condições de
 Dirichlet incompatíveis e torna a fronteira numérica compatível com a
 série analítica usada como referência.
+
+Concluído em 2026-05-06. A política passou a ser global nos geradores
+Dirichlet regular e por nuvem arbitrária. Com `15x15x15`, o erro global caiu
+de `5.530370e-01` para `2.365161e-02`, mantendo `support_lt_4 = 0`,
+`mls_failures = 0` e `gmres_converged = YES`.

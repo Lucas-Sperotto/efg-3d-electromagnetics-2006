@@ -68,13 +68,19 @@ static int validate_dirichlet_values(const DirichletPoint *points, int point_cou
             ++failures;
         }
 
-        if (fabs(points[i].z - TEST_L) <= TEST_TOLERANCE) {
+        const int on_open_top = fabs(points[i].z - TEST_L) <= TEST_TOLERANCE &&
+                                fabs(points[i].x) > TEST_TOLERANCE &&
+                                fabs(points[i].x - TEST_L) > TEST_TOLERANCE &&
+                                fabs(points[i].y) > TEST_TOLERANCE &&
+                                fabs(points[i].y - TEST_L) > TEST_TOLERANCE;
+
+        if (on_open_top) {
             if (fabs(points[i].value - TEST_V0) > TEST_TOLERANCE) {
-                fprintf(stderr, "top point %d should have value V0\n", i);
+                fprintf(stderr, "open top point %d should have value V0\n", i);
                 ++failures;
             }
         } else if (fabs(points[i].value) > TEST_TOLERANCE) {
-            fprintf(stderr, "non-top point %d should have value zero\n", i);
+            fprintf(stderr, "grounded boundary point %d should have value zero\n", i);
             ++failures;
         }
     }
@@ -213,8 +219,8 @@ static int test_top_refined_nodes_generate_surface_dirichlet(void)
             same_coordinates(points[i].x, points[i].y, points[i].z, TEST_L, 0.0, TEST_L) ||
             same_coordinates(points[i].x, points[i].y, points[i].z, 0.0, TEST_L, TEST_L) ||
             same_coordinates(points[i].x, points[i].y, points[i].z, TEST_L, TEST_L, TEST_L)) {
-            if (fabs(points[i].value - TEST_V0) > TEST_TOLERANCE) {
-                fprintf(stderr, "upper corner %d should receive V0\n", i);
+            if (fabs(points[i].value) > TEST_TOLERANCE) {
+                fprintf(stderr, "upper corner %d should remain grounded\n", i);
                 ++failures;
             }
             ++top_corner_count;

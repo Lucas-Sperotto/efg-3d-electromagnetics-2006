@@ -299,13 +299,11 @@ static int export_plane_csv(const PlaneExportConfig *config,
     printf("  valid points:           %d\n", valid_points);
     printf("  MLS failures:           %d\n", mls_failures);
     /*
-     * The max absolute error on the plane is expected to be ~V0, similar to
-     * the 3D volume error. This occurs at the boundaries of the plane slice
-     * (e.g., y=0, z=10) where the Dirichlet conditions are discontinuous (V=0
-     * from a side wall vs V=V0 from the top wall). The mean and relative
-     * errors over the whole plane are more representative. A future step
-     * could be to compute metrics for the interior of the plane as well,
-     * inside the visualization script.
+     * The largest plane errors remain close to the upper side edges, where
+     * the analytical sine series is difficult to approximate with a finite
+     * number of terms and the MLS field crosses a steep boundary layer. The
+     * visualization script also reports interior-plane metrics, which are more
+     * representative of the reproduced contour figure.
      */
     printf("  max abs error:          %.6e\n", max_abs_error);
     printf("  mean abs error:         %.6e\n",
@@ -852,11 +850,10 @@ static int run_case(const char *label,
                " valid=%d interior=%d) ---\n",
                sample_n, sample_n, sample_n, valid_all, valid_int);
         /*
-         * The max absolute error is expected to be ~V0 due to the singularity
-         * at the top edges (e.g., at (0, y, L), V=0 from the side face and
-         * V=V0 from the top face). The analytical solution resolves this to 0,
-         * while the Lagrange multiplier formulation gives priority to the top
-         * face, resulting in V=V0. The interior error is the relevant metric.
+         * The boundary-compatible Dirichlet policy grounds the upper edges and
+         * applies V0 only on the open top face. The global max error is still
+         * useful for regression, but the interior relative error is the main
+         * quality metric for the smooth part of the field.
          */
         printf("  max abs error:          %.6e\n", max_abs_err);
         printf("  rel error (global):     %.6e\n", rel_global);

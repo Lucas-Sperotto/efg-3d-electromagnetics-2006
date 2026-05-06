@@ -298,10 +298,9 @@ static int test_small_cube_pipeline(void)
     /*
      * The full-node analytical vector is computed above, but the relative norm
      * is evaluated on the single interior node for this first smoke test. With
-     * this tiny 3x3x3 grid, the Dirichlet generator gives z=L priority on top
-     * edges and corners, while the sine-series analytical expression evaluates
-     * to zero on lateral edges. A full-boundary norm would therefore mostly
-     * measure that discontinuity rather than the interior pipeline.
+     * this tiny 3x3x3 grid, boundary values are too coarse to serve as a
+     * meaningful convergence metric. The single interior sample keeps the test
+     * focused on pipeline interoperability rather than boundary singularities.
      */
 
     return failures;

@@ -70,6 +70,34 @@ static int node_on_cube_surface(const Node3D *node, double L, double tolerance)
            coordinate_on_boundary(node->z, L, tolerance);
 }
 
+static int point_on_open_top_face(double x,
+                                  double y,
+                                  double z,
+                                  double L,
+                                  double tolerance)
+{
+    return same_coordinate(z, L, tolerance) &&
+           !coordinate_on_boundary(x, L, tolerance) &&
+           !coordinate_on_boundary(y, L, tolerance);
+}
+
+static double cube_dirichlet_value(double x,
+                                   double y,
+                                   double z,
+                                   double L,
+                                   double V0,
+                                   double tolerance)
+{
+    /*
+     * For comparison with the sine-sine-sinh analytical series, the grounded
+     * lateral walls own the upper edges and corners. The top electrode is
+     * therefore applied only on the open face z=L, 0<x<L, 0<y<L.
+     * Reference: docs/06_condicoes_de_contorno_e_lagrange.md, Dirichlet data
+     * for the electrostatic cube boundary.
+     */
+    return point_on_open_top_face(x, y, z, L, tolerance) ? V0 : 0.0;
+}
+
 static int append_unique_node(Node3D *nodes,
                               int max_nodes,
                               int *node_count,
@@ -360,8 +388,8 @@ int cube_dirichlet_point_count(int nx, int ny, int nz)
  * Generate unique Dirichlet points on the cube boundary.
  *
  * Each surface grid point is emitted once, including edges and corners. The
- * top face z = L has priority, so upper corners receive V0 even though they
- * also belong to lateral faces.
+ * grounded lateral walls own the upper edges/corners; V0 is prescribed only
+ * on the open top face z=L, 0<x<L, 0<y<L.
  */
 int cube_generate_dirichlet_points(double L,
                                    double V0,
@@ -374,6 +402,7 @@ int cube_generate_dirichlet_points(double L,
 {
     int required_count;
     int output_index = 0;
+    const double tolerance = cube_tolerance(L);
 
     if (L <= 0.0 || points == NULL || point_count == NULL ||
         !valid_grid_dimensions(nx, ny, nz)) {
@@ -403,7 +432,9 @@ int cube_generate_dirichlet_points(double L,
 
                 if (on_boundary) {
                     const double z = grid_coordinate(L, k, nz);
-                    const double value = on_top_face ? V0 : 0.0;
+                    const double value = cube_dirichlet_value(x, y, z,
+                                                              L, V0,
+                                                              tolerance);
 
                     points[output_index] = (DirichletPoint){x, y, z, value};
                     ++output_index;
@@ -421,9 +452,9 @@ int cube_generate_dirichlet_points(double L,
  *
  * This variant is intended for non-uniform clouds, where a regular
  * nx-by-ny-by-nz surface count is not available. Every unique node on the cube
- * surface produces one Dirichlet point. The top face z = L has priority over
- * lateral and bottom faces, matching the electrostatic cube boundary
- * conditions.
+ * surface produces one Dirichlet point. The grounded lateral walls own the
+ * upper edges/corners so that the numerical boundary is compatible with the
+ * sine-sine-sinh analytical reference.
  */
 int cube_article_cloud_max_nodes(int base_n, int top_n, int n_extra_slices)
 {
@@ -447,7 +478,7 @@ int cube_article_cloud_max_nodes(int base_n, int top_n, int n_extra_slices)
  * Generate a non-uniform node cloud inspired by Fig. 2 of the article.
  *
  * Builds a regular base_n^3 coarse grid, then overlays a full top_n x top_n
- * face at z = L (all Dirichlet V0) and n_extra_slices horizontal layers of
+ * face at z = L and n_extra_slices horizontal layers of
  * (top_n-2) x (top_n-2) interior-in-xy nodes at z-values uniformly spaced
  * within the top z_frac fraction of the cube. Only interior nodes are added
  * in the extra slices so that the Dirichlet set is not overwhelmed.
@@ -489,7 +520,7 @@ int cube_generate_article_cloud(double L,
         }
     }
 
-    /* Step 2: full top_n x top_n face at z = L (all become V0 Dirichlet) */
+    /* Step 2: full top_n x top_n face at z = L */
     for (int ix = 0; ix < top_n; ++ix) {
         const double x = grid_coordinate(L, ix, top_n);
 
@@ -557,9 +588,12 @@ int cube_generate_dirichlet_points_from_nodes(double L,
             continue;
         }
 
-        if (same_coordinate(nodes[i].z, L, tolerance)) {
-            value = V0;
-        }
+        value = cube_dirichlet_value(nodes[i].x,
+                                     nodes[i].y,
+                                     nodes[i].z,
+                                     L,
+                                     V0,
+                                     tolerance);
 
         status = append_unique_dirichlet_point(points,
                                                max_points,

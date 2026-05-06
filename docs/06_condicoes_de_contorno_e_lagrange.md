@@ -8,7 +8,7 @@ Ele não introduz solver EFG nem novas fórmulas além das relações já presen
 
 ## Condições de contorno do cubo
 
-Para o problema de referência da caixa cúbica eletrostática, considera-se um cubo de lado `L` com potencial prescrito na face superior e potencial nulo nas demais faces.
+Para o problema de referência da caixa cúbica eletrostática, considera-se um cubo de lado `L` com potencial prescrito no interior aberto da face superior e potencial nulo nas demais faces.
 
 As condições de contorno do benchmark ficam:
 
@@ -17,14 +17,18 @@ As condições de contorno do benchmark ficam:
 - `V = 0` em `y = 0`
 - `V = 0` em `y = L`
 - `V = 0` em `z = 0`
-- `V = V0` em `z = L`
+- `V = V0` em `z = L` e `0 < x < L`, `0 < y < L`
+- `V = 0` nas arestas e cantos superiores herdados das paredes laterais
 
 Com os valores numéricos do artigo:
 
 - `L = 10`
 - `V0 = 10 V`
 
-TODO: confirmar no artigo original se há alguma convenção adicional para o isolante infinitesimal entre a parede superior e as paredes laterais.
+A convenção acima foi adotada para manter a fronteira numérica compatível com
+a solução analítica seno-seno-sinh usada como referência. Nessa série, os
+fatores `sin(n*pi*x/L)` e `sin(m*pi*y/L)` anulam automaticamente o potencial
+nas paredes laterais, inclusive nas arestas superiores.
 
 ---
 

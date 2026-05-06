@@ -1,5 +1,194 @@
 # TEST_REPORT — Relatório de testes e execuções
 
+## Documentação final da Figura 3
+
+Data: 2026-05-06 07:10:45 -03
+
+Objetivo:
+
+```text
+Fechar a comparação qualitativa da Figura 3 com a nova política Dirichlet,
+decidindo o caso principal e documentando divergências quantitativas.
+```
+
+Comandos:
+
+```bash
+python3 scripts/plot_cube_plane.py --input data/output/cube_plane_x_5_33_nonuniform.csv --output-dir data/output/figures_nonuniform --all
+python3 - <<'PY'  # gera data/output/figure3_region_error_summary.csv
+git diff --check
+```
+
+Saída do plot da nuvem não uniforme:
+
+```text
+input CSV: data/output/cube_plane_x_5_33_nonuniform.csv
+points: 10201
+grid shape: 101 y samples x 101 z samples
+V_num contour: data/output/figures_nonuniform/cube_plane_x_5_33_V_num_contour.png
+V_exact contour: data/output/figures_nonuniform/cube_plane_x_5_33_V_exact_contour.png
+abs_error contour: data/output/figures_nonuniform/cube_plane_x_5_33_abs_error_contour.png
+comparison: data/output/figures_nonuniform/cube_plane_x_5_33_comparison.png
+contour levels: 1,2,3,4,5,6,7,8,9,10
+V_num isolines: data/output/figures_nonuniform/cube_plane_x_5_33_V_num_isolines.png
+V_exact isolines: data/output/figures_nonuniform/cube_plane_x_5_33_V_exact_isolines.png
+overlay isolines: data/output/figures_nonuniform/cube_plane_x_5_33_overlay_isolines.png
+article style: data/output/figures_nonuniform/cube_plane_x_5_33_article_style.png
+metrics: data/output/figures_nonuniform/cube_plane_x_5_33_metrics.txt
+metrics CSV: data/output/figures_nonuniform/cube_plane_x_5_33_metrics.csv
+plane max abs error: 8.9756567595061476
+plane mean abs error: 0.048818265944699984
+plane relative error: 0.076503096399384907
+interior max abs error: 4.57797229240151
+interior mean abs error: 0.042779335597525864
+interior relative error: 0.051413379499960249
+```
+
+Resumo regional salvo em:
+
+```text
+data/output/figure3_region_error_summary.csv
+```
+
+```text
+regular_refine15,plane_interior,9801,4.5832172421960662,0.033991129037661515,0.045519082240473685
+regular_refine15,upper_edge_band_open,200,4.5832172421960662,0.66972900329403773,0.18909845121416047
+regular_refine15,central_window,3721,0.068219627386034709,0.018392758048930504,0.0093039163608956994
+nonuniform_article_cloud,plane_interior,9801,4.57797229240151,0.042779335597525919,0.051413379499960249
+nonuniform_article_cloud,upper_edge_band_open,200,4.57797229240151,0.80546146720387524,0.2075997877939339
+nonuniform_article_cloud,central_window,3721,0.090693462740045305,0.019416315028840336,0.0099193017249255763
+```
+
+Decisão documentada:
+
+```text
+A Figura 3 principal deve usar regular_refine15. A nuvem nonuniform fica como
+comparação suplementar: ela tem erro 3D interior próximo, mas erro de plano
+maior e GMRES muito mais caro.
+```
+
+Conclusão:
+
+```text
+PASSOU
+```
+
+---
+
+## Política Dirichlet compatível com a série analítica
+
+Data: 2026-05-06 07:03:18 -03
+
+Mudança validada:
+
+```text
+As arestas e cantos superiores herdam V = 0 das paredes laterais.
+V = V0 é aplicado somente no interior aberto da face z = L.
+```
+
+Comandos:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case sanity
+./build/reproduce_cube_sparse --case target
+./build/reproduce_cube_sparse --case refine13
+./build/reproduce_cube_sparse --case refine15
+./build/reproduce_cube_sparse --case plane15
+./build/reproduce_cube_sparse --case nonuniform
+python3 scripts/plot_cube_plane.py --all
+git diff --check
+```
+
+Build:
+
+```text
+[100%] Built target test_gmres
+```
+
+Testes:
+
+```text
+100% tests passed, 0 tests failed out of 28
+Total Test time (real) = 0.07 sec
+```
+
+Resumo dos casos:
+
+| Caso | nodes | constraints | GMRES | rel_error_global | rel_error_interior | max_abs_error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| sanity 5x5x5 | 125 | 98 | 90 | 3.523634e-01 | 1.894514e-01 | 9.003920e+00 |
+| target 11x11x11 | 1331 | 602 | 67 | 4.184668e-02 | 5.134600e-02 | 8.523242e-01 |
+| refine13 13x13x13 | 2197 | 866 | 66 | 3.005864e-02 | 4.185387e-02 | 7.438111e-01 |
+| refine15 15x15x15 | 3375 | 1178 | 69 | 2.365161e-02 | 2.801970e-02 | 4.642650e-01 |
+| nonuniform | 1974 | 762 | 391 | 3.323664e-02 | 2.964210e-02 | 8.344899e-01 |
+
+Critérios de parada:
+
+```text
+support_lt_4 = 0 em todos os casos executados
+support_lt_8 = 0 em todos os casos executados
+mls_failures = 0 em todos os casos executados
+gmres_converged = YES em todos os casos executados
+```
+
+Exportação `plane15`:
+
+```text
+csv:                    data/output/cube_plane_x_5_33_refine15.csv
+exported points:        10201
+valid points:           10201
+MLS failures:           0
+max abs error:          8.885380e+00
+mean abs error:         3.975798e-02
+relative error plane:   7.103024e-02
+V_num min:              -3.403056e-02
+V_num max:              1.047976e+01
+V_exact min:            0.000000e+00
+V_exact max:            1.185991e+01
+```
+
+Figuras e métricas regeneradas:
+
+```text
+data/output/figures/cube_plane_x_5_33_V_num_contour.png
+data/output/figures/cube_plane_x_5_33_V_exact_contour.png
+data/output/figures/cube_plane_x_5_33_abs_error_contour.png
+data/output/figures/cube_plane_x_5_33_comparison.png
+data/output/figures/cube_plane_x_5_33_V_num_isolines.png
+data/output/figures/cube_plane_x_5_33_V_exact_isolines.png
+data/output/figures/cube_plane_x_5_33_overlay_isolines.png
+data/output/figures/cube_plane_x_5_33_article_style.png
+data/output/figures/cube_plane_x_5_33_metrics.txt
+data/output/figures/cube_plane_x_5_33_metrics.csv
+```
+
+Conteúdo atualizado de `metrics.txt`:
+
+```text
+plane_max_abs_error: 8.8853802327955815
+plane_mean_abs_error: 0.039757980669987383
+plane_relative_error: 0.071030239356406136
+interior_points: 9801
+interior_max_abs_error: 4.5832172421960653
+interior_mean_abs_error: 0.033991129037661473
+interior_relative_error: 0.045519082240473685
+contour_levels: 1,2,3,4,5,6,7,8,9,10
+article_style_figures_count: 4
+```
+
+Conclusão:
+
+```text
+PASSOU
+```
+
+Observação: os resultados anteriores que explicavam `max_abs_error ≈ V0`
+pela prioridade da face superior estão obsoletos para a formulação atual.
+
+---
+
 ## Nuvem não uniforme `--case nonuniform`
 
 Data: 2026-05-06
