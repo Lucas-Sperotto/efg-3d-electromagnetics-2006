@@ -21,6 +21,7 @@
 #define ANALYTICAL_TERMS 25
 #define REPORT_CSV_PATH "data/output/reproduce_cube_sparse_report.csv"
 #define PLANE15_CSV_PATH "data/output/cube_plane_x_5_33_refine15.csv"
+#define NONUNIFORM_CSV_PATH "data/output/cube_plane_x_5_33_nonuniform.csv"
 
 typedef struct CubeSparseReport {
     const char *label;
@@ -53,7 +54,8 @@ typedef enum CubeSparseSelection {
     CUBE_SPARSE_TARGET,
     CUBE_SPARSE_REFINE13,
     CUBE_SPARSE_REFINE15,
-    CUBE_SPARSE_PLANE15
+    CUBE_SPARSE_PLANE15,
+    CUBE_SPARSE_NONUNIFORM
 } CubeSparseSelection;
 
 typedef struct PlaneExportConfig {
@@ -336,15 +338,17 @@ static void print_usage(const char *program_name)
     printf("  %s --case refine13\n", program_name);
     printf("  %s --case refine15\n", program_name);
     printf("  %s --case plane15\n", program_name);
+    printf("  %s --case nonuniform\n", program_name);
     printf("  %s --case all\n", program_name);
     printf("\n");
     printf("Cases:\n");
-    printf("  sanity  regular 5x5x5 nodes, 5x5x5 integration cells, dense comparison\n");
-    printf("  target  regular 11x11x11 nodes, 15x15x15 integration cells, GMRES\n");
-    printf("  refine13 regular 13x13x13 nodes, 15x15x15 integration cells, GMRES\n");
-    printf("  refine15 regular 15x15x15 nodes, 15x15x15 integration cells, GMRES\n");
-    printf("  plane15 solve refine15 and export x=5.33 plane CSV\n");
-    printf("  all     run sanity, target, refine13, and refine15 (default)\n");
+    printf("  sanity     regular 5x5x5 nodes, 5x5x5 integration cells, dense comparison\n");
+    printf("  target     regular 11x11x11 nodes, 15x15x15 integration cells, GMRES\n");
+    printf("  refine13   regular 13x13x13 nodes, 15x15x15 integration cells, GMRES\n");
+    printf("  refine15   regular 15x15x15 nodes, 15x15x15 integration cells, GMRES\n");
+    printf("  plane15    solve refine15 and export x=5.33 plane CSV\n");
+    printf("  nonuniform non-uniform cloud (Fig. 2), export x=5.33 plane CSV\n");
+    printf("  all        run sanity, target, refine13, and refine15 (default)\n");
 }
 
 static int parse_args(int argc, char **argv, CubeSparseSelection *selection)
@@ -380,6 +384,10 @@ static int parse_args(int argc, char **argv, CubeSparseSelection *selection)
         }
         if (strcmp(argv[2], "plane15") == 0) {
             *selection = CUBE_SPARSE_PLANE15;
+            return 0;
+        }
+        if (strcmp(argv[2], "nonuniform") == 0) {
+            *selection = CUBE_SPARSE_NONUNIFORM;
             return 0;
         }
         if (strcmp(argv[2], "all") == 0) {
@@ -890,6 +898,426 @@ done:
 }
 
 /*
+ * Non-uniform EFG pipeline using cube_generate_article_cloud.
+ *
+ * Identical to run_case except for node generation: uses a coarse base_n^3
+ * regular grid plus fine interior-in-xy slices near z = L (upper zone).
+ */
+static int run_case_nonuniform(const char *label,
+                               double L, double V0,
+                               int base_n, int top_n,
+                               int n_extra_slices, double z_frac,
+                               int nx_cells, int ny_cells, int nz_cells,
+                               double gmres_tol, int gmres_restart,
+                               int gmres_max_iter,
+                               int sample_n,
+                               const PlaneExportConfig *plane_export)
+{
+    int node_count      = 0;
+    int point_count     = 0;
+    int total_size      = 0;
+    int mls_eval_fail   = 0;
+    int coo_count_aug   = 0;
+    double t_asm = 0.0, t_sol = 0.0;
+    clock_t t_start;
+
+    Node3D         *nodes     = NULL;
+    DirichletPoint *dp        = NULL;
+    double         *K_dense   = NULL;
+    double         *G_dense   = NULL;
+    double         *F         = NULL;
+    double         *q_vec     = NULL;
+    double         *b_aug     = NULL;
+    double         *x_sol     = NULL;
+    MlsShapeValue  *shape_buf = NULL;
+
+    SparseCOO K_coo     = {NULL, NULL, NULL, 0, 0, 0, 0};
+    SparseCOO A_aug_coo = {NULL, NULL, NULL, 0, 0, 0, 0};
+    SparseCSR A_aug_csr = {NULL, NULL, NULL, 0, 0, 0};
+    GmresResult       gmres_res  = {0, 0, 0.0, 0.0};
+    MlsConnectivityStats diag    = {0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0};
+    CubeSparseReport report;
+
+    int rc = 1;
+
+    const int max_nodes = cube_article_cloud_max_nodes(base_n, top_n,
+                                                       n_extra_slices);
+    if (max_nodes < 0) {
+        fprintf(stderr, "[%s] invalid cloud parameters\n", label);
+        return 1;
+    }
+    /* Conservative upper bound for constraints: at most all nodes on surface */
+    const int max_constraints = max_nodes;
+
+    report_init(&report, label);
+
+    /* ---------------------------------------------------------------- alloc */
+
+    nodes     = malloc((size_t)max_nodes * sizeof(*nodes));
+    dp        = malloc((size_t)max_constraints * sizeof(*dp));
+    K_dense   = calloc((size_t)max_nodes * (size_t)max_nodes, sizeof(double));
+    G_dense   = calloc((size_t)max_constraints * (size_t)max_nodes,
+                       sizeof(double));
+    F         = calloc((size_t)max_nodes, sizeof(double));
+    q_vec     = calloc((size_t)max_constraints, sizeof(double));
+    shape_buf = malloc((size_t)max_nodes * sizeof(*shape_buf));
+
+    if (!nodes || !dp || !K_dense || !G_dense || !F || !q_vec || !shape_buf) {
+        fprintf(stderr, "[%s] allocation failed\n", label);
+        goto nu_done;
+    }
+
+    /* ------------------------------------------------------- cloud & support */
+
+    if (cube_generate_article_cloud(L, base_n, top_n, n_extra_slices, z_frac,
+                                    nodes, max_nodes,
+                                    &node_count) != CUBE_PROBLEM_OK) {
+        fprintf(stderr, "[%s] non-uniform cloud generation failed\n", label);
+        goto nu_done;
+    }
+
+    if (support_assign_article_default(nodes, node_count) != SUPPORT_OK) {
+        fprintf(stderr, "[%s] support assignment failed\n", label);
+        goto nu_done;
+    }
+
+    /* ---------------------------------------------------- Dirichlet points */
+
+    if (cube_generate_dirichlet_points_from_nodes(L, V0,
+                                                  nodes, node_count,
+                                                  dp, max_constraints,
+                                                  &point_count)
+        != CUBE_PROBLEM_OK) {
+        fprintf(stderr, "[%s] Dirichlet generation failed\n", label);
+        goto nu_done;
+    }
+
+    total_size = node_count + point_count;
+    report.nodes          = node_count;
+    report.constraints    = point_count;
+    report.augmented_size = total_size;
+
+    /* -------------------------------------------------- MLS diagnostic */
+
+    mls_connectivity_stats_uniform_grid(nodes, node_count,
+                                        0.0, L, nx_cells,
+                                        0.0, L, ny_cells,
+                                        0.0, L, nz_cells,
+                                        &diag);
+    report.support_min       = diag.min_nodes;
+    report.support_mean      = diag.mean_nodes;
+    report.support_max       = diag.max_nodes;
+    report.support_lt_4      = diag.n_invalid;
+    report.support_lt_8      = diag.n_invalid + diag.n_suspect;
+    report.mls_failures      = diag.n_moment_fail;
+    report.max_cond_estimate = diag.max_cond;
+
+    if (report.support_lt_4 > 0) {
+        fprintf(stderr, "[%s] STOP: support_lt_4 = %d (> 0)\n",
+                label, report.support_lt_4);
+        emit_required_report(&report);
+        goto nu_done;
+    }
+
+    if (report.mls_failures > 0) {
+        fprintf(stderr, "[%s] STOP: mls_failures = %d (> 0)\n",
+                label, report.mls_failures);
+        emit_required_report(&report);
+        goto nu_done;
+    }
+
+    /* ----------------------------------------- dense K and G assembly */
+
+    t_start = clock();
+
+    if (global_stiffness_assemble_dense(nodes, node_count,
+                                        0.0, L, 0.0, L, 0.0, L,
+                                        nx_cells, ny_cells, nz_cells,
+                                        K_dense) != GLOBAL_STIFFNESS_OK) {
+        fprintf(stderr, "[%s] K assembly failed\n", label);
+        goto nu_done;
+    }
+
+    if (dirichlet_assemble_constraints_dense(nodes, node_count,
+                                             dp, point_count,
+                                             G_dense, q_vec) != DIRICHLET_OK) {
+        fprintf(stderr, "[%s] G assembly failed\n", label);
+        goto nu_done;
+    }
+
+    /* --------------------------------- K_dense → K_coo (exact zeros dropped) */
+
+    {
+        int k_cap = node_count * 100 + 16;
+        if (sparse_coo_create(&K_coo, node_count, node_count, k_cap)
+            != SPARSE_OK) {
+            fprintf(stderr, "[%s] K_coo alloc failed\n", label);
+            goto nu_done;
+        }
+        for (int r = 0; r < node_count; ++r) {
+            for (int c = 0; c < node_count; ++c) {
+                double v = K_dense[r * node_count + c];
+                if (v != 0.0) {
+                    if (sparse_coo_add(&K_coo, r, c, v) != SPARSE_OK) {
+                        fprintf(stderr, "[%s] K_coo append failed\n", label);
+                        goto nu_done;
+                    }
+                }
+            }
+        }
+    }
+
+    /* -------------------- augmented COO: K block + G / G^T (zeros dropped) */
+
+    {
+        int aug_cap = K_coo.count + point_count * 60 + 16;
+        if (sparse_coo_create(&A_aug_coo, total_size, total_size, aug_cap)
+            != SPARSE_OK) {
+            fprintf(stderr, "[%s] A_aug_coo alloc failed\n", label);
+            goto nu_done;
+        }
+
+        for (int e = 0; e < K_coo.count; ++e) {
+            if (sparse_coo_add(&A_aug_coo,
+                               K_coo.row[e], K_coo.col[e], K_coo.val[e])
+                != SPARSE_OK) {
+                fprintf(stderr, "[%s] A_aug K-block append failed\n", label);
+                goto nu_done;
+            }
+        }
+
+        for (int ci = 0; ci < point_count; ++ci) {
+            for (int ni = 0; ni < node_count; ++ni) {
+                double val = G_dense[ci * node_count + ni];
+                if (val != 0.0) {
+                    if (sparse_coo_add(&A_aug_coo, ni, node_count + ci, val)
+                        != SPARSE_OK) {
+                        fprintf(stderr,
+                                "[%s] A_aug G^T append failed\n", label);
+                        goto nu_done;
+                    }
+                    if (sparse_coo_add(&A_aug_coo, node_count + ci, ni, val)
+                        != SPARSE_OK) {
+                        fprintf(stderr, "[%s] A_aug G append failed\n", label);
+                        goto nu_done;
+                    }
+                }
+            }
+        }
+    }
+
+    /* b_aug: F (zeros) followed by q */
+    b_aug = calloc((size_t)total_size, sizeof(double));
+    if (!b_aug) {
+        fprintf(stderr, "[%s] b_aug alloc failed\n", label);
+        goto nu_done;
+    }
+    for (int ci = 0; ci < point_count; ++ci) {
+        b_aug[node_count + ci] = q_vec[ci];
+    }
+
+    coo_count_aug = A_aug_coo.count;
+    if (sparse_coo_to_csr(&A_aug_coo, &A_aug_csr) != SPARSE_OK) {
+        fprintf(stderr, "[%s] A_aug CSR conversion failed\n", label);
+        goto nu_done;
+    }
+
+    t_asm = elapsed_s(t_start);
+    report.K_nnz           = K_coo.count;
+    report.A_aug_nnz       = A_aug_csr.nnz;
+    report.assembly_time_s = t_asm;
+
+    /* ------------------------------------------------------------ GMRES */
+
+    x_sol = calloc((size_t)total_size, sizeof(double));
+    if (!x_sol) {
+        fprintf(stderr, "[%s] x_sol alloc failed\n", label);
+        goto nu_done;
+    }
+
+    t_start = clock();
+
+    if (gmres_solve(&A_aug_csr, b_aug, x_sol,
+                    gmres_tol, gmres_max_iter, gmres_restart,
+                    &gmres_res) != GMRES_OK) {
+        fprintf(stderr, "[%s] gmres_solve returned error\n", label);
+        goto nu_done;
+    }
+
+    t_sol = elapsed_s(t_start);
+    report.gmres_converged   = gmres_res.converged;
+    report.gmres_iterations  = gmres_res.iterations;
+    report.residual_initial  = gmres_res.residual_init;
+    report.residual_final    = gmres_res.residual_final;
+    report.solve_time_s      = t_sol;
+
+    if (!gmres_res.converged) {
+        fprintf(stderr, "[%s] STOP: GMRES did not converge\n", label);
+        emit_required_report(&report);
+        goto nu_done;
+    }
+
+    if (plane_export != NULL && plane_export->enabled) {
+        if (export_plane_csv(plane_export, nodes, node_count, x_sol,
+                             shape_buf, L, V0) != 0) {
+            goto nu_done;
+        }
+    }
+
+    /* ----------------------------------------------- error vs analytical */
+
+    {
+        double global_err2 = 0.0, global_ref2 = 0.0;
+        double intrnl_err2 = 0.0, intrnl_ref2 = 0.0;
+        double max_abs_err = 0.0;
+        int valid_all = 0, valid_int = 0;
+
+        for (int ix = 0; ix < sample_n; ++ix) {
+            double sx = (double)ix / (double)(sample_n - 1) * L;
+
+            for (int iy = 0; iy < sample_n; ++iy) {
+                double sy = (double)iy / (double)(sample_n - 1) * L;
+
+                for (int iz = 0; iz < sample_n; ++iz) {
+                    double sz = (double)iz / (double)(sample_n - 1) * L;
+                    int val_count = 0;
+                    double v_num  = 0.0;
+
+                    int mls_st = mls_linear3d_shape_functions(
+                                     nodes, node_count, sx, sy, sz,
+                                     shape_buf, node_count, &val_count);
+                    if (mls_st != MLS_OK) {
+                        ++mls_eval_fail;
+                        continue;
+                    }
+
+                    for (int k = 0; k < val_count; ++k) {
+                        v_num += shape_buf[k].phi
+                                 * x_sol[shape_buf[k].node_index];
+                    }
+
+                    double v_exact = analytical_potential_cube(
+                                         sx, sy, sz, L, V0, ANALYTICAL_TERMS);
+                    double d = v_num - v_exact;
+                    double ae = fabs(d);
+
+                    if (ae > max_abs_err) max_abs_err = ae;
+                    global_err2 += d * d;
+                    global_ref2 += v_exact * v_exact;
+                    ++valid_all;
+
+                    int interior = (ix > 0 && ix < sample_n - 1 &&
+                                    iy > 0 && iy < sample_n - 1 &&
+                                    iz > 0 && iz < sample_n - 1);
+                    if (interior) {
+                        intrnl_err2 += d * d;
+                        intrnl_ref2 += v_exact * v_exact;
+                        ++valid_int;
+                    }
+                }
+            }
+        }
+
+        double rel_global = (global_ref2 > 0.0)
+                            ? sqrt(global_err2 / global_ref2) : 0.0;
+        double rel_intrnl = (intrnl_ref2 > 0.0)
+                            ? sqrt(intrnl_err2 / intrnl_ref2) : 0.0;
+        report.max_abs_error            = max_abs_err;
+        report.relative_error_global    = rel_global;
+        report.relative_error_interior  = rel_intrnl;
+        report.mls_failures            += mls_eval_fail;
+
+        printf("\n");
+        printf("=== %s ===\n", label);
+        printf("\n");
+
+        printf("--- Problem ---\n");
+        printf("  nodes:                  %d\n", node_count);
+        printf("  constraints:            %d\n", point_count);
+        printf("  augmented size:         %d\n", total_size);
+        printf("  cloud: base=%dx%dx%d top=%dx%d slices=%d z_frac=%.2f\n",
+               base_n, base_n, base_n, top_n, top_n, n_extra_slices, z_frac);
+        printf("  integration cells:      %dx%dx%d\n",
+               nx_cells, ny_cells, nz_cells);
+        printf("\n");
+
+        printf("--- MLS diagnostic  (cell-centre grid %dx%dx%d = %d pts) ---\n",
+               nx_cells, ny_cells, nz_cells, diag.n_total);
+        printf("  invalid (active < 4):   %d\n", diag.n_invalid);
+        printf("  suspect (active < 8):   %d\n", diag.n_suspect);
+        printf("  moment matrix failures: %d\n", diag.n_moment_fail);
+        printf("  min active nodes:       %d\n", diag.min_nodes);
+        printf("  max active nodes:       %d\n", diag.max_nodes);
+        printf("  mean active nodes:      %.2f\n", diag.mean_nodes);
+        printf("  max cond estimate:      %.3e\n", diag.max_cond);
+        printf("  mean cond estimate:     %.3e\n", diag.mean_cond);
+        printf("\n");
+
+        printf("--- Sparse assembly ---\n");
+        printf("  K nnz  (|v| > 0):       %d\n", K_coo.count);
+        printf("  A_aug COO entries:       %d\n", coo_count_aug);
+        printf("  A_aug CSR nnz:           %d\n", A_aug_csr.nnz);
+        printf("  assembly time:           %.3f s\n", t_asm);
+        printf("\n");
+
+        printf("--- GMRES ---\n");
+        printf("  restart:                %d\n",   gmres_restart);
+        printf("  max iter:               %d\n",   gmres_max_iter);
+        printf("  tolerance:              %.1e\n", gmres_tol);
+        printf("  iterations:             %d\n",   gmres_res.iterations);
+        printf("  residual init:          %.6e\n", gmres_res.residual_init);
+        printf("  residual final:         %.6e\n", gmres_res.residual_final);
+        printf("  rel residual:           %.3e\n",
+               (gmres_res.residual_init > 0.0)
+               ? gmres_res.residual_final / gmres_res.residual_init : 0.0);
+        printf("  converged:              %s\n",
+               gmres_res.converged ? "YES" : "NO");
+        printf("  solution time:          %.3f s\n", t_sol);
+        printf("\n");
+
+        printf("--- Errors  (sample grid %dx%dx%d,"
+               " valid=%d interior=%d) ---\n",
+               sample_n, sample_n, sample_n, valid_all, valid_int);
+        printf("  max abs error:          %.6e\n", max_abs_err);
+        printf("  rel error (global):     %.6e\n", rel_global);
+        printf("  rel error (interior):   %.6e\n", rel_intrnl);
+        if (mls_eval_fail > 0) {
+            printf("  MLS eval failures:      %d\n", mls_eval_fail);
+        }
+        printf("\n");
+
+        if (emit_required_report(&report) != 0) {
+            goto nu_done;
+        }
+
+        if (report.mls_failures > 0) {
+            fprintf(stderr, "[%s] STOP: mls_failures = %d (> 0)\n",
+                    label, report.mls_failures);
+            goto nu_done;
+        }
+    }
+
+    rc = 0;
+
+nu_done:
+    free(nodes);
+    free(dp);
+    free(K_dense);
+    free(G_dense);
+    free(F);
+    free(q_vec);
+    free(b_aug);
+    free(x_sol);
+    free(shape_buf);
+
+    sparse_coo_destroy(&K_coo);
+    sparse_coo_destroy(&A_aug_coo);
+    sparse_csr_destroy(&A_aug_csr);
+
+    return rc;
+}
+
+/*
  * Sparse EFG cube solver.
  *
  * Runs two cases by default:
@@ -898,6 +1326,7 @@ done:
  *   3. 13x13x13 refinement — GMRES only, larger restart.
  *   4. 15x15x15 refinement — GMRES only, larger restart.
  * The plane15 case reuses the 15x15x15 setup and exports x = 5.33.
+ * The nonuniform case uses cube_generate_article_cloud (Fig. 2 inspired).
  */
 int main(int argc, char **argv)
 {
@@ -994,6 +1423,27 @@ int main(int argc, char **argv)
             /*max_iter=*/20000,
             /*sample_n=*/11,
             /*dense_cmp=*/0,
+            &plane_export);
+    }
+
+    if (selection == CUBE_SPARSE_NONUNIFORM) {
+        const PlaneExportConfig plane_export = {
+            1,
+            5.33,
+            101,
+            101,
+            NONUNIFORM_CSV_PATH
+        };
+        status |= run_case_nonuniform(
+            "nonuniform cloud (base=11 top=13 slices=4 z_frac=0.30)",
+            /*L=*/10.0, /*V0=*/10.0,
+            /*base_n=*/11, /*top_n=*/13,
+            /*n_extra_slices=*/4, /*z_frac=*/0.30,
+            /*cells=*/15, 15, 15,
+            /*gmres_tol=*/1e-9,
+            /*restart=*/300,
+            /*max_iter=*/20000,
+            /*sample_n=*/11,
             &plane_export);
     }
 

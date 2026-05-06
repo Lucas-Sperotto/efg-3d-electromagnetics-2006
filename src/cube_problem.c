@@ -425,6 +425,108 @@ int cube_generate_dirichlet_points(double L,
  * lateral and bottom faces, matching the electrostatic cube boundary
  * conditions.
  */
+int cube_article_cloud_max_nodes(int base_n, int top_n, int n_extra_slices)
+{
+    if (base_n < 2 || top_n < 2 || n_extra_slices < 0) {
+        return CUBE_PROBLEM_INVALID_ARGUMENT;
+    }
+
+    const long long base  = (long long)base_n * base_n * base_n;
+    const long long face  = (long long)top_n * top_n;
+    const long long inner = (long long)(top_n - 2) * (top_n - 2);
+    const long long total = base + face + inner * n_extra_slices;
+
+    if (total > (long long)INT_MAX) {
+        return CUBE_PROBLEM_INVALID_ARGUMENT;
+    }
+
+    return (int)total;
+}
+
+/*
+ * Generate a non-uniform node cloud inspired by Fig. 2 of the article.
+ *
+ * Builds a regular base_n^3 coarse grid, then overlays a full top_n x top_n
+ * face at z = L (all Dirichlet V0) and n_extra_slices horizontal layers of
+ * (top_n-2) x (top_n-2) interior-in-xy nodes at z-values uniformly spaced
+ * within the top z_frac fraction of the cube. Only interior nodes are added
+ * in the extra slices so that the Dirichlet set is not overwhelmed.
+ */
+int cube_generate_article_cloud(double L,
+                                int base_n,
+                                int top_n,
+                                int n_extra_slices,
+                                double z_frac,
+                                Node3D *nodes,
+                                int max_nodes,
+                                int *node_count)
+{
+    int status = CUBE_PROBLEM_OK;
+    int output_count = 0;
+
+    if (L <= 0.0 || nodes == NULL || node_count == NULL ||
+        base_n < 2 || top_n < 4 || n_extra_slices < 0 ||
+        z_frac <= 0.0 || z_frac > 1.0 || max_nodes <= 0) {
+        return CUBE_PROBLEM_INVALID_ARGUMENT;
+    }
+
+    /* Step 1: regular base_n^3 grid */
+    for (int i = 0; i < base_n; ++i) {
+        const double x = grid_coordinate(L, i, base_n);
+
+        for (int j = 0; j < base_n; ++j) {
+            const double y = grid_coordinate(L, j, base_n);
+
+            for (int k = 0; k < base_n; ++k) {
+                const double z = grid_coordinate(L, k, base_n);
+
+                status = append_unique_node(nodes, max_nodes, &output_count,
+                                            x, y, z, L);
+                if (status != CUBE_PROBLEM_OK) {
+                    return status;
+                }
+            }
+        }
+    }
+
+    /* Step 2: full top_n x top_n face at z = L (all become V0 Dirichlet) */
+    for (int ix = 0; ix < top_n; ++ix) {
+        const double x = grid_coordinate(L, ix, top_n);
+
+        for (int iy = 0; iy < top_n; ++iy) {
+            const double y = grid_coordinate(L, iy, top_n);
+
+            status = append_unique_node(nodes, max_nodes, &output_count,
+                                        x, y, L, L);
+            if (status != CUBE_PROBLEM_OK) {
+                return status;
+            }
+        }
+    }
+
+    /* Step 3: interior-in-xy fine slices in the top z_frac zone */
+    for (int s = 1; s <= n_extra_slices; ++s) {
+        const double z = L - (double)s * (L * z_frac) / (double)n_extra_slices;
+
+        for (int ix = 1; ix <= top_n - 2; ++ix) {
+            const double x = grid_coordinate(L, ix, top_n);
+
+            for (int iy = 1; iy <= top_n - 2; ++iy) {
+                const double y = grid_coordinate(L, iy, top_n);
+
+                status = append_unique_node(nodes, max_nodes, &output_count,
+                                            x, y, z, L);
+                if (status != CUBE_PROBLEM_OK) {
+                    return status;
+                }
+            }
+        }
+    }
+
+    *node_count = output_count;
+    return CUBE_PROBLEM_OK;
+}
+
 int cube_generate_dirichlet_points_from_nodes(double L,
                                               double V0,
                                               const Node3D *nodes,

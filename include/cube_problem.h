@@ -52,4 +52,15 @@ int cube_generate_dirichlet_points_from_nodes(double L,
                                               int max_points,
                                               int *point_count);
 
+int cube_article_cloud_max_nodes(int base_n, int top_n, int n_extra_slices);
+
+int cube_generate_article_cloud(double L,
+                                int base_n,
+                                int top_n,
+                                int n_extra_slices,
+                                double z_frac,
+                                Node3D *nodes,
+                                int max_nodes,
+                                int *node_count);
+
 #endif
