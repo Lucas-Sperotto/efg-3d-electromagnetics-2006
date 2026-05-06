@@ -372,7 +372,7 @@ Depois, testar nuvens não uniformes somente após diagnóstico de conectividade
 - [x] erro relativo discreto global;
 - [x] erro relativo discreto interno;
 - [x] erro máximo absoluto;
-- [ ] erro no plano `x = 5.33`;
+- [x] erro no plano `x = 5.33`;
 - [ ] erro em regiões próximas às arestas superiores;
 - [x] número de iterações GMRES;
 - [x] tempo de montagem;
@@ -393,11 +393,17 @@ x = 5.33
 
 ### 10.2. Tarefas
 
-- [ ] Criar app para exportar plano `x = 5.33`.
-- [ ] Gerar CSV:
+- [x] Criar modo no app para exportar plano `x = 5.33`.
+- [x] Gerar CSV:
 
   ```text
   y,z,V_num,V_exact,abs_error
+  ```
+
+  Concluído em `data/output/cube_plane_x_5_33_refine15.csv` com colunas:
+
+  ```text
+  x,y,z,V_num,V_exact,abs_error
   ```
 
 - [ ] Criar script Python para plotar:

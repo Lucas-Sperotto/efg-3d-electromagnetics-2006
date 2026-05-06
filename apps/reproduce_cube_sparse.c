@@ -20,6 +20,7 @@
 
 #define ANALYTICAL_TERMS 25
 #define REPORT_CSV_PATH "data/output/reproduce_cube_sparse_report.csv"
+#define PLANE15_CSV_PATH "data/output/cube_plane_x_5_33_refine15.csv"
 
 typedef struct CubeSparseReport {
     const char *label;
@@ -51,8 +52,17 @@ typedef enum CubeSparseSelection {
     CUBE_SPARSE_SANITY,
     CUBE_SPARSE_TARGET,
     CUBE_SPARSE_REFINE13,
-    CUBE_SPARSE_REFINE15
+    CUBE_SPARSE_REFINE15,
+    CUBE_SPARSE_PLANE15
 } CubeSparseSelection;
+
+typedef struct PlaneExportConfig {
+    int enabled;
+    double x;
+    int y_samples;
+    int z_samples;
+    const char *path;
+} PlaneExportConfig;
 
 static double elapsed_s(clock_t start)
 {
@@ -188,6 +198,126 @@ static int emit_required_report(const CubeSparseReport *report)
     return append_required_report_csv(report);
 }
 
+static int export_plane_csv(const PlaneExportConfig *config,
+                            const Node3D *nodes,
+                            int node_count,
+                            const double *solution,
+                            MlsShapeValue *shape_buf,
+                            double L,
+                            double V0)
+{
+    FILE *file = NULL;
+    int mls_failures = 0;
+    int valid_points = 0;
+    int total_points = 0;
+    double err2 = 0.0;
+    double ref2 = 0.0;
+    double max_abs_error = 0.0;
+    double sum_abs_error = 0.0;
+    double v_num_min = INFINITY;
+    double v_num_max = -INFINITY;
+    double v_exact_min = INFINITY;
+    double v_exact_max = -INFINITY;
+
+    if (config == NULL || nodes == NULL || solution == NULL ||
+        shape_buf == NULL || node_count <= 0 ||
+        config->y_samples < 2 || config->z_samples < 2 ||
+        config->path == NULL) {
+        return 1;
+    }
+
+    file = fopen(config->path, "w");
+    if (file == NULL) {
+        fprintf(stderr, "Could not open plane CSV: %s\n", config->path);
+        return 1;
+    }
+
+    fprintf(file, "x,y,z,V_num,V_exact,abs_error\n");
+
+    for (int iy = 0; iy < config->y_samples; ++iy) {
+        double y = L * (double)iy / (double)(config->y_samples - 1);
+
+        for (int iz = 0; iz < config->z_samples; ++iz) {
+            double z = L * (double)iz / (double)(config->z_samples - 1);
+            double v_exact = analytical_potential_cube(config->x, y, z,
+                                                       L, V0,
+                                                       ANALYTICAL_TERMS);
+            int val_count = 0;
+            double v_num = 0.0;
+            double abs_error = NAN;
+            int mls_status;
+
+            if (v_exact < v_exact_min) v_exact_min = v_exact;
+            if (v_exact > v_exact_max) v_exact_max = v_exact;
+
+            mls_status = mls_linear3d_shape_functions(nodes, node_count,
+                                                       config->x, y, z,
+                                                       shape_buf, node_count,
+                                                       &val_count);
+            if (mls_status != MLS_OK) {
+                ++mls_failures;
+                fprintf(file, "%.17g,%.17g,%.17g,nan,%.17g,nan\n",
+                        config->x, y, z, v_exact);
+                ++total_points;
+                continue;
+            }
+
+            for (int k = 0; k < val_count; ++k) {
+                v_num += shape_buf[k].phi
+                         * solution[shape_buf[k].node_index];
+            }
+
+            abs_error = fabs(v_num - v_exact);
+            err2 += (v_num - v_exact) * (v_num - v_exact);
+            ref2 += v_exact * v_exact;
+            sum_abs_error += abs_error;
+            if (abs_error > max_abs_error) max_abs_error = abs_error;
+            if (v_num < v_num_min) v_num_min = v_num;
+            if (v_num > v_num_max) v_num_max = v_num;
+
+            fprintf(file, "%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n",
+                    config->x, y, z, v_num, v_exact, abs_error);
+
+            ++valid_points;
+            ++total_points;
+        }
+    }
+
+    if (fclose(file) != 0) {
+        fprintf(stderr, "Could not close plane CSV: %s\n", config->path);
+        return 1;
+    }
+
+    printf("--- Plane export ---\n");
+    printf("  csv:                    %s\n", config->path);
+    printf("  x plane:                %.17g\n", config->x);
+    printf("  y samples:              %d\n", config->y_samples);
+    printf("  z samples:              %d\n", config->z_samples);
+    printf("  exported points:        %d\n", total_points);
+    printf("  valid points:           %d\n", valid_points);
+    printf("  MLS failures:           %d\n", mls_failures);
+    printf("  max abs error:          %.6e\n", max_abs_error);
+    printf("  mean abs error:         %.6e\n",
+           (valid_points > 0) ? sum_abs_error / (double)valid_points : NAN);
+    printf("  relative error plane:   %.6e\n",
+           (ref2 > 0.0) ? sqrt(err2 / ref2) : NAN);
+    printf("  V_num min:              %.6e\n",
+           (valid_points > 0) ? v_num_min : NAN);
+    printf("  V_num max:              %.6e\n",
+           (valid_points > 0) ? v_num_max : NAN);
+    printf("  V_exact min:            %.6e\n", v_exact_min);
+    printf("  V_exact max:            %.6e\n", v_exact_max);
+    printf("\n");
+
+    if (mls_failures > 0) {
+        fprintf(stderr, "STOP: plane MLS failures = %d (> 0)\n",
+                mls_failures);
+        return 1;
+    }
+
+    return 0;
+}
+
 static void print_usage(const char *program_name)
 {
     printf("Usage:\n");
@@ -196,6 +326,7 @@ static void print_usage(const char *program_name)
     printf("  %s --case target\n", program_name);
     printf("  %s --case refine13\n", program_name);
     printf("  %s --case refine15\n", program_name);
+    printf("  %s --case plane15\n", program_name);
     printf("  %s --case all\n", program_name);
     printf("\n");
     printf("Cases:\n");
@@ -203,6 +334,7 @@ static void print_usage(const char *program_name)
     printf("  target  regular 11x11x11 nodes, 15x15x15 integration cells, GMRES\n");
     printf("  refine13 regular 13x13x13 nodes, 15x15x15 integration cells, GMRES\n");
     printf("  refine15 regular 15x15x15 nodes, 15x15x15 integration cells, GMRES\n");
+    printf("  plane15 solve refine15 and export x=5.33 plane CSV\n");
     printf("  all     run sanity, target, refine13, and refine15 (default)\n");
 }
 
@@ -237,6 +369,10 @@ static int parse_args(int argc, char **argv, CubeSparseSelection *selection)
             *selection = CUBE_SPARSE_REFINE15;
             return 0;
         }
+        if (strcmp(argv[2], "plane15") == 0) {
+            *selection = CUBE_SPARSE_PLANE15;
+            return 0;
+        }
         if (strcmp(argv[2], "all") == 0) {
             *selection = CUBE_SPARSE_ALL;
             return 0;
@@ -266,7 +402,8 @@ static int run_case(const char *label,
                     int nx_cells, int ny_cells, int nz_cells,
                     double gmres_tol, int gmres_restart, int gmres_max_iter,
                     int sample_n,
-                    int run_dense_cmp)
+                    int run_dense_cmp,
+                    const PlaneExportConfig *plane_export)
 {
     int node_count      = 0;
     int point_count     = 0;
@@ -570,6 +707,13 @@ static int run_case(const char *label,
         free(x_d);
     }
 
+    if (plane_export != NULL && plane_export->enabled) {
+        if (export_plane_csv(plane_export, nodes, node_count, x_sol,
+                             shape_buf, L, V0) != 0) {
+            goto done;
+        }
+    }
+
     /* ----------------------------------------------- error vs analytical */
 
     {
@@ -744,6 +888,7 @@ done:
  *   2. 11x11x11 target     — GMRES only (dense solve is O(n^3) too slow).
  *   3. 13x13x13 refinement — GMRES only, larger restart.
  *   4. 15x15x15 refinement — GMRES only, larger restart.
+ * The plane15 case reuses the 15x15x15 setup and exports x = 5.33.
  */
 int main(int argc, char **argv)
 {
@@ -773,7 +918,8 @@ int main(int argc, char **argv)
             /*restart=*/30,
             /*max_iter=*/2000,
             /*sample_n=*/11,
-            /*dense_cmp=*/1);
+            /*dense_cmp=*/1,
+            /*plane_export=*/NULL);
     }
 
     if (selection == CUBE_SPARSE_ALL ||
@@ -787,7 +933,8 @@ int main(int argc, char **argv)
             /*restart=*/200,
             /*max_iter=*/10000,
             /*sample_n=*/11,
-            /*dense_cmp=*/0);
+            /*dense_cmp=*/0,
+            /*plane_export=*/NULL);
     }
 
     if (selection == CUBE_SPARSE_ALL ||
@@ -801,7 +948,8 @@ int main(int argc, char **argv)
             /*restart=*/300,
             /*max_iter=*/20000,
             /*sample_n=*/11,
-            /*dense_cmp=*/0);
+            /*dense_cmp=*/0,
+            /*plane_export=*/NULL);
     }
 
     if (selection == CUBE_SPARSE_ALL ||
@@ -815,7 +963,29 @@ int main(int argc, char **argv)
             /*restart=*/300,
             /*max_iter=*/20000,
             /*sample_n=*/11,
-            /*dense_cmp=*/0);
+            /*dense_cmp=*/0,
+            /*plane_export=*/NULL);
+    }
+
+    if (selection == CUBE_SPARSE_PLANE15) {
+        const PlaneExportConfig plane_export = {
+            1,
+            5.33,
+            101,
+            101,
+            PLANE15_CSV_PATH
+        };
+        status |= run_case(
+            "15x15x15 plane15 (export x=5.33 plane)",
+            /*L=*/10.0, /*V0=*/10.0,
+            /*nx,ny,nz=*/15, 15, 15,
+            /*cells=*/15, 15, 15,
+            /*gmres_tol=*/1e-9,
+            /*restart=*/300,
+            /*max_iter=*/20000,
+            /*sample_n=*/11,
+            /*dense_cmp=*/0,
+            &plane_export);
     }
 
     return status;
