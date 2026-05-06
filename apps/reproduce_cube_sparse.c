@@ -19,10 +19,214 @@
 #include <time.h>
 
 #define ANALYTICAL_TERMS 25
+#define REPORT_CSV_PATH "data/output/reproduce_cube_sparse_report.csv"
+
+typedef struct CubeSparseReport {
+    const char *label;
+    int nodes;
+    int constraints;
+    int augmented_size;
+    int K_nnz;
+    int A_aug_nnz;
+    int support_min;
+    int support_max;
+    int support_lt_4;
+    int support_lt_8;
+    int mls_failures;
+    int gmres_converged;
+    int gmres_iterations;
+    double support_mean;
+    double residual_initial;
+    double residual_final;
+    double relative_error_global;
+    double relative_error_interior;
+    double max_abs_error;
+    double assembly_time_s;
+    double solve_time_s;
+} CubeSparseReport;
+
+typedef enum CubeSparseSelection {
+    CUBE_SPARSE_ALL,
+    CUBE_SPARSE_SANITY,
+    CUBE_SPARSE_TARGET
+} CubeSparseSelection;
 
 static double elapsed_s(clock_t start)
 {
     return (double)(clock() - start) / (double)CLOCKS_PER_SEC;
+}
+
+static void report_init(CubeSparseReport *report, const char *label)
+{
+    report->label = label;
+    report->nodes = -1;
+    report->constraints = -1;
+    report->augmented_size = -1;
+    report->K_nnz = -1;
+    report->A_aug_nnz = -1;
+    report->support_min = -1;
+    report->support_max = -1;
+    report->support_lt_4 = -1;
+    report->support_lt_8 = -1;
+    report->mls_failures = -1;
+    report->gmres_converged = 0;
+    report->gmres_iterations = -1;
+    report->support_mean = NAN;
+    report->residual_initial = NAN;
+    report->residual_final = NAN;
+    report->relative_error_global = NAN;
+    report->relative_error_interior = NAN;
+    report->max_abs_error = NAN;
+    report->assembly_time_s = NAN;
+    report->solve_time_s = NAN;
+}
+
+static void print_required_report(const CubeSparseReport *report)
+{
+    printf("--- Required report ---\n");
+    printf("label: %s\n", report->label);
+    printf("nodes: %d\n", report->nodes);
+    printf("constraints: %d\n", report->constraints);
+    printf("augmented_size: %d\n", report->augmented_size);
+    printf("K_nnz: %d\n", report->K_nnz);
+    printf("A_aug_nnz: %d\n", report->A_aug_nnz);
+    printf("support_min: %d\n", report->support_min);
+    printf("support_mean: %.6f\n", report->support_mean);
+    printf("support_max: %d\n", report->support_max);
+    printf("support_lt_4: %d\n", report->support_lt_4);
+    printf("support_lt_8: %d\n", report->support_lt_8);
+    printf("mls_failures: %d\n", report->mls_failures);
+    printf("gmres_converged: %s\n", report->gmres_converged ? "YES" : "NO");
+    printf("gmres_iterations: %d\n", report->gmres_iterations);
+    printf("residual_initial: %.6e\n", report->residual_initial);
+    printf("residual_final: %.6e\n", report->residual_final);
+    printf("relative_error_global: %.6e\n", report->relative_error_global);
+    printf("relative_error_interior: %.6e\n", report->relative_error_interior);
+    printf("max_abs_error: %.6e\n", report->max_abs_error);
+    printf("assembly_time_s: %.6f\n", report->assembly_time_s);
+    printf("solve_time_s: %.6f\n", report->solve_time_s);
+    printf("\n");
+}
+
+static int write_report_csv_header(void)
+{
+    FILE *file = fopen(REPORT_CSV_PATH, "w");
+
+    if (file == NULL) {
+        fprintf(stderr, "Could not open report CSV: %s\n", REPORT_CSV_PATH);
+        return 1;
+    }
+
+    fprintf(file,
+            "label,nodes,constraints,augmented_size,K_nnz,A_aug_nnz,"
+            "support_min,support_mean,support_max,support_lt_4,"
+            "support_lt_8,mls_failures,gmres_converged,gmres_iterations,"
+            "residual_initial,residual_final,relative_error_global,"
+            "relative_error_interior,max_abs_error,assembly_time_s,"
+            "solve_time_s\n");
+
+    if (fclose(file) != 0) {
+        fprintf(stderr, "Could not close report CSV: %s\n", REPORT_CSV_PATH);
+        return 1;
+    }
+
+    return 0;
+}
+
+static int append_required_report_csv(const CubeSparseReport *report)
+{
+    FILE *file = fopen(REPORT_CSV_PATH, "a");
+
+    if (file == NULL) {
+        fprintf(stderr, "Could not append report CSV: %s\n", REPORT_CSV_PATH);
+        return 1;
+    }
+
+    fprintf(file,
+            "\"%s\",%d,%d,%d,%d,%d,%d,%.17g,%d,%d,%d,%d,%s,%d,"
+            "%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n",
+            report->label,
+            report->nodes,
+            report->constraints,
+            report->augmented_size,
+            report->K_nnz,
+            report->A_aug_nnz,
+            report->support_min,
+            report->support_mean,
+            report->support_max,
+            report->support_lt_4,
+            report->support_lt_8,
+            report->mls_failures,
+            report->gmres_converged ? "YES" : "NO",
+            report->gmres_iterations,
+            report->residual_initial,
+            report->residual_final,
+            report->relative_error_global,
+            report->relative_error_interior,
+            report->max_abs_error,
+            report->assembly_time_s,
+            report->solve_time_s);
+
+    if (fclose(file) != 0) {
+        fprintf(stderr, "Could not close report CSV: %s\n", REPORT_CSV_PATH);
+        return 1;
+    }
+
+    return 0;
+}
+
+static int emit_required_report(const CubeSparseReport *report)
+{
+    print_required_report(report);
+    return append_required_report_csv(report);
+}
+
+static void print_usage(const char *program_name)
+{
+    printf("Usage:\n");
+    printf("  %s\n", program_name);
+    printf("  %s --case sanity\n", program_name);
+    printf("  %s --case target\n", program_name);
+    printf("  %s --case all\n", program_name);
+    printf("\n");
+    printf("Cases:\n");
+    printf("  sanity  regular 5x5x5 nodes, 5x5x5 integration cells, dense comparison\n");
+    printf("  target  regular 11x11x11 nodes, 15x15x15 integration cells, GMRES\n");
+    printf("  all     run sanity followed by target (default)\n");
+}
+
+static int parse_args(int argc, char **argv, CubeSparseSelection *selection)
+{
+    *selection = CUBE_SPARSE_ALL;
+
+    if (argc == 1) {
+        return 0;
+    }
+
+    if (argc == 2 &&
+        (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    if (argc == 3 && strcmp(argv[1], "--case") == 0) {
+        if (strcmp(argv[2], "sanity") == 0) {
+            *selection = CUBE_SPARSE_SANITY;
+            return 0;
+        }
+        if (strcmp(argv[2], "target") == 0) {
+            *selection = CUBE_SPARSE_TARGET;
+            return 0;
+        }
+        if (strcmp(argv[2], "all") == 0) {
+            *selection = CUBE_SPARSE_ALL;
+            return 0;
+        }
+    }
+
+    fprintf(stderr, "Invalid command-line arguments.\n");
+    print_usage(argv[0]);
+    return 2;
 }
 
 /*
@@ -68,12 +272,15 @@ static int run_case(const char *label,
     SparseCSR A_aug_csr = {NULL, NULL, NULL, 0, 0, 0};
     GmresResult       gmres_res  = {0, 0, 0.0, 0.0};
     MlsConnectivityStats diag    = {0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0};
+    CubeSparseReport report;
 
     double dense_rel_diff = -1.0;  /* < 0 means comparison was not run */
     int rc = 1;
 
     const int expected_nodes       = cube_regular_node_count(nx, ny, nz);
     const int expected_constraints = cube_dirichlet_point_count(nx, ny, nz);
+
+    report_init(&report, label);
 
     /* ---------------------------------------------------------------- alloc */
 
@@ -118,18 +325,49 @@ static int run_case(const char *label,
     }
 
     total_size = node_count + point_count;
+    report.nodes          = node_count;
+    report.constraints    = point_count;
+    report.augmented_size = total_size;
 
     /* -------------------------------------------------- MLS diagnostic */
     /*
      * Evaluate connectivity at the nx_cells × ny_cells × nz_cells Gauss cell
      * centres. mls_connectivity_stats_uniform_grid with [xmin=0, xmax=L, n]
      * places points at (ix + 0.5) * L / n, which are exactly the cell centres.
+     *
+     * The MLS linear basis p^T = [1, x, y, z] has 4 terms. For the moment
+     * matrix A(x) to be invertible, each evaluation point x must have at
+     * least 4 active nodes in its support. This is a critical condition.
+     *
+     * - active_nodes < 4 (support_lt_4 > 0): fatal, A(x) is singular.
+     * - active_nodes < 8 (support_lt_8 > 0): warning, A(x) may be ill-
+     *   conditioned, leading to numerical instability.
      */
     mls_connectivity_stats_uniform_grid(nodes, node_count,
                                         0.0, L, nx_cells,
                                         0.0, L, ny_cells,
                                         0.0, L, nz_cells,
                                         &diag);
+    report.support_min   = diag.min_nodes;
+    report.support_mean  = diag.mean_nodes;
+    report.support_max   = diag.max_nodes;
+    report.support_lt_4  = diag.n_invalid;
+    report.support_lt_8  = diag.n_invalid + diag.n_suspect;
+    report.mls_failures  = diag.n_moment_fail;
+
+    if (report.support_lt_4 > 0) {
+        fprintf(stderr, "[%s] STOP: support_lt_4 = %d (> 0)\n",
+                label, report.support_lt_4);
+        emit_required_report(&report);
+        goto done;
+    }
+
+    if (report.mls_failures > 0) {
+        fprintf(stderr, "[%s] STOP: mls_failures = %d (> 0)\n",
+                label, report.mls_failures);
+        emit_required_report(&report);
+        goto done;
+    }
 
     /* ----------------------------------------- dense K and G assembly */
 
@@ -158,7 +396,7 @@ static int run_case(const char *label,
      * loop is negligible.
      */
     {
-        int k_cap = node_count * 30 + 16;
+        int k_cap = node_count * 100 + 16;
         if (sparse_coo_create(&K_coo, node_count, node_count, k_cap)
             != SPARSE_OK) {
             fprintf(stderr, "[%s] K_coo alloc failed\n", label);
@@ -168,7 +406,10 @@ static int run_case(const char *label,
             for (int c = 0; c < node_count; ++c) {
                 double v = K_dense[r * node_count + c];
                 if (v != 0.0) {
-                    sparse_coo_add(&K_coo, r, c, v);
+                    if (sparse_coo_add(&K_coo, r, c, v) != SPARSE_OK) {
+                        fprintf(stderr, "[%s] K_coo append failed\n", label);
+                        goto done;
+                    }
                 }
             }
         }
@@ -182,6 +423,13 @@ static int run_case(const char *label,
      * per constraint row enter the sparse structure.
      */
     {
+        /*
+         * The augmented system [K G^T; G 0] arises from imposing Dirichlet
+         * boundary conditions via Lagrange multipliers. This increases the
+         * system size but avoids empirical penalty parameters. The resulting
+         * matrix is symmetric but not positive-definite, requiring a solver
+         * like GMRES.
+         */
         int aug_cap = K_coo.count + point_count * 60 + 16;
         if (sparse_coo_create(&A_aug_coo, total_size, total_size, aug_cap)
             != SPARSE_OK) {
@@ -191,8 +439,12 @@ static int run_case(const char *label,
 
         /* K block (rows and cols 0..node_count-1) */
         for (int e = 0; e < K_coo.count; ++e) {
-            sparse_coo_add(&A_aug_coo,
-                           K_coo.row[e], K_coo.col[e], K_coo.val[e]);
+            if (sparse_coo_add(&A_aug_coo,
+                               K_coo.row[e], K_coo.col[e], K_coo.val[e])
+                != SPARSE_OK) {
+                fprintf(stderr, "[%s] A_aug K-block append failed\n", label);
+                goto done;
+            }
         }
 
         /* G and G^T blocks */
@@ -201,9 +453,17 @@ static int run_case(const char *label,
                 double val = G_dense[ci * node_count + ni];
                 if (val != 0.0) {
                     /* G^T: A_aug[ni, node_count+ci] */
-                    sparse_coo_add(&A_aug_coo, ni, node_count + ci, val);
+                    if (sparse_coo_add(&A_aug_coo, ni, node_count + ci, val)
+                        != SPARSE_OK) {
+                        fprintf(stderr, "[%s] A_aug G^T append failed\n", label);
+                        goto done;
+                    }
                     /* G:   A_aug[node_count+ci, ni] */
-                    sparse_coo_add(&A_aug_coo, node_count + ci, ni, val);
+                    if (sparse_coo_add(&A_aug_coo, node_count + ci, ni, val)
+                        != SPARSE_OK) {
+                        fprintf(stderr, "[%s] A_aug G append failed\n", label);
+                        goto done;
+                    }
                 }
             }
         }
@@ -217,9 +477,15 @@ static int run_case(const char *label,
     }
 
     coo_count_aug = A_aug_coo.count;
-    sparse_coo_to_csr(&A_aug_coo, &A_aug_csr);
+    if (sparse_coo_to_csr(&A_aug_coo, &A_aug_csr) != SPARSE_OK) {
+        fprintf(stderr, "[%s] A_aug CSR conversion failed\n", label);
+        goto done;
+    }
 
     t_asm = elapsed_s(t_start);
+    report.K_nnz          = K_coo.count;
+    report.A_aug_nnz      = A_aug_csr.nnz;
+    report.assembly_time_s = t_asm;
 
     /* ------------------------------------------------------------ GMRES */
 
@@ -228,6 +494,11 @@ static int run_case(const char *label,
 
     t_start = clock();
 
+    /*
+     * GMRES is used because the augmented system with Lagrange multipliers
+     * is symmetric but indefinite (due to the zero block), so standard
+     * conjugate gradient methods cannot be used.
+     */
     if (gmres_solve(&A_aug_csr, b_aug, x_sol,
                     gmres_tol, gmres_max_iter, gmres_restart,
                     &gmres_res) != GMRES_OK) {
@@ -236,6 +507,17 @@ static int run_case(const char *label,
     }
 
     t_sol = elapsed_s(t_start);
+    report.gmres_converged = gmres_res.converged;
+    report.gmres_iterations = gmres_res.iterations;
+    report.residual_initial = gmres_res.residual_init;
+    report.residual_final   = gmres_res.residual_final;
+    report.solve_time_s     = t_sol;
+
+    if (!gmres_res.converged) {
+        fprintf(stderr, "[%s] STOP: GMRES did not converge\n", label);
+        emit_required_report(&report);
+        goto done;
+    }
 
     /* --------------------------------- dense comparison (small cases only) */
 
@@ -327,6 +609,10 @@ static int run_case(const char *label,
                             ? sqrt(global_err2 / global_ref2) : 0.0;
         double rel_intrnl = (intrnl_ref2 > 0.0)
                             ? sqrt(intrnl_err2 / intrnl_ref2) : 0.0;
+        report.max_abs_error = max_abs_err;
+        report.relative_error_global = rel_global;
+        report.relative_error_interior = rel_intrnl;
+        report.mls_failures += mls_eval_fail;
 
         /* ------------------------------------------------- print report */
 
@@ -384,6 +670,13 @@ static int run_case(const char *label,
         printf("--- Errors  (sample grid %dx%dx%d,"
                " valid=%d interior=%d) ---\n",
                sample_n, sample_n, sample_n, valid_all, valid_int);
+        /*
+         * The max absolute error is expected to be ~V0 due to the singularity
+         * at the top edges (e.g., at (0, y, L), V=0 from the side face and
+         * V=V0 from the top face). The analytical solution resolves this to 0,
+         * while the Lagrange multiplier formulation gives priority to the top
+         * face, resulting in V=V0. The interior error is the relevant metric.
+         */
         printf("  max abs error:          %.6e\n", max_abs_err);
         printf("  rel error (global):     %.6e\n", rel_global);
         printf("  rel error (interior):   %.6e\n", rel_intrnl);
@@ -391,6 +684,16 @@ static int run_case(const char *label,
             printf("  MLS eval failures:      %d\n", mls_eval_fail);
         }
         printf("\n");
+
+        if (emit_required_report(&report) != 0) {
+            goto done;
+        }
+
+        if (report.mls_failures > 0) {
+            fprintf(stderr, "[%s] STOP: mls_failures = %d (> 0)\n",
+                    label, report.mls_failures);
+            goto done;
+        }
     }
 
     rc = 0;
@@ -416,37 +719,54 @@ done:
 /*
  * Sparse EFG cube solver.
  *
- * Runs two cases:
+ * Runs two cases by default:
  *   1. 5x5x5 sanity check  — compared against the dense solver.
  *   2. 11x11x11 main case  — GMRES only (dense solve is O(n^3) too slow).
  */
-int main(void)
+int main(int argc, char **argv)
 {
+    CubeSparseSelection selection;
     int status = 0;
+    int parse_status = parse_args(argc, argv, &selection);
 
-    /* --- Case 1: sanity check --- */
-    status |= run_case(
-        "5x5x5 sanity check (dense comparison enabled)",
-        /*L=*/10.0, /*V0=*/10.0,
-        /*nx,ny,nz=*/5, 5, 5,
-        /*cells=*/5, 5, 5,
-        /*gmres_tol=*/1e-9,
-        /*restart=*/30,
-        /*max_iter=*/2000,
-        /*sample_n=*/11,
-        /*dense_cmp=*/1);
+    if (parse_status == 1) {
+        return 0;
+    }
+    if (parse_status != 0) {
+        return 1;
+    }
 
-    /* --- Case 2: 11x11x11 --- */
-    status |= run_case(
-        "11x11x11  (15x15x15 integration cells, GMRES only)",
-        /*L=*/10.0, /*V0=*/10.0,
-        /*nx,ny,nz=*/11, 11, 11,
-        /*cells=*/15, 15, 15,
-        /*gmres_tol=*/1e-9,
-        /*restart=*/200,
-        /*max_iter=*/10000,
-        /*sample_n=*/11,
-        /*dense_cmp=*/0);
+    if (write_report_csv_header() != 0) {
+        return 1;
+    }
+
+    if (selection == CUBE_SPARSE_ALL ||
+        selection == CUBE_SPARSE_SANITY) {
+        status |= run_case(
+            "5x5x5 sanity check (dense comparison enabled)",
+            /*L=*/10.0, /*V0=*/10.0,
+            /*nx,ny,nz=*/5, 5, 5,
+            /*cells=*/5, 5, 5,
+            /*gmres_tol=*/1e-9,
+            /*restart=*/30,
+            /*max_iter=*/2000,
+            /*sample_n=*/11,
+            /*dense_cmp=*/1);
+    }
+
+    if (selection == CUBE_SPARSE_ALL ||
+        selection == CUBE_SPARSE_TARGET) {
+        status |= run_case(
+            "11x11x11 target (15x15x15 integration cells, GMRES only)",
+            /*L=*/10.0, /*V0=*/10.0,
+            /*nx,ny,nz=*/11, 11, 11,
+            /*cells=*/15, 15, 15,
+            /*gmres_tol=*/1e-9,
+            /*restart=*/200,
+            /*max_iter=*/10000,
+            /*sample_n=*/11,
+            /*dense_cmp=*/0);
+    }
 
     return status;
 }
