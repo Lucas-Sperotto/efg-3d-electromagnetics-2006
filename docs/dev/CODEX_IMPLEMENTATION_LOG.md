@@ -1,261 +1,49 @@
 # CODEX_IMPLEMENTATION_LOG — Registro de implementação
 
-## 2026-05-06 07:18:17 -03 — Caso `nonuniform_refine`
+## 2026-05-06 — Precondicionador Jacobi para GMRES (experimento)
 
 Objetivo da rodada:
 
 ```text
-Executar a próxima etapa de nuvem não uniforme: base_n=13, top_n=15,
-n_extra_slices=4, z_frac=0.30.
+Adicionar API de precondicionador Jacobi ao GMRES e avaliar se reduz as iterações
+para o sistema aumentado [K G^T; G 0] nos casos regular 15x15x15 e nonuniform_refine.
 ```
 
 Arquivos modificados:
 
-- `apps/reproduce_cube_sparse.c`
-- `TODO.md`
-- `docs/figure3_reproduction.md`
-- `docs/dev/TEST_REPORT.md`
-- `docs/dev/CODEX_IMPLEMENTATION_LOG.md`
+- `src/gmres.c` — novo parâmetro `const double *diag_precond`; aplicação de M⁻¹ ao
+  resíduo e ao passo de Arnoldi.
+- `include/efg/gmres.h` — assinatura atualizada.
+- `apps/reproduce_cube_sparse.c` — helper `build_jacobi_precond`; ambas as funções
+  `run_case` e `run_case_nonuniform` extraem e passam o precondicionador.
+- `tests/test_gmres.c` — chamadas existentes atualizadas para NULL; novo teste
+  `test_gmres_jacobi_precond` com sistema 4×4 diagonal-dominante.
 
-Arquivos gerados não versionados:
+Resultado experimental:
 
-- `data/output/cube_plane_x_5_33_nonuniform_refine.csv`
-- `data/output/figures_nonuniform_refine/`
-- `data/output/nonuniform_refinement_region_summary.csv`
-- `data/output/figure3_region_error_summary.csv`
+| Caso | Iter sem Jacobi | Iter com Jacobi |
+| --- | ---: | ---: |
+| regular 15×15×15 | 69 | 96 |
+| nonuniform_refine (13,15,4,0.30) | 832 | 858 |
 
-Resumo técnico:
+**Conclusão: Jacobi esquerdo NÃO é eficaz para o sistema de ponto-sela [K G^T; G 0].**
 
-- Adicionado caso CLI:
+Diagnóstico:
 
-  ```bash
-  ./build/reproduce_cube_sparse --case nonuniform_refine
-  ```
+O bloco (2,2) do sistema aumentado tem diagonal zero (linhas dos multiplicadores de
+Lagrange). O extrator de Jacobi atribui `diag_inv[i] = 1.0` para essas linhas (sem
+escalonamento). As linhas do bloco K são escalonadas por 1/K_ii. Isso cria uma
+disparidade de escala entre os dois blocos que não melhora o condicionamento da matriz
+aumentada — ao contrário, pode ligeiramente piorar a convergência do GMRES ao alterar
+o critério de convergência para o espaço pré-condicionado sem benefício real.
 
-- O caso preserva a nuvem `nonuniform` anterior e adiciona uma variação
-  `base_n=13`, `top_n=15`.
-- Configuração:
-  - `n_extra_slices = 4`;
-  - `z_frac = 0.30`;
-  - integração `15x15x15`;
-  - GMRES `restart=300`, `max_iter=20000`;
-  - exportação do plano `x = 5.33`.
+Para sistemas de ponto-sela, o precondicionador correto é bloco-diagonal:
+`M = [diag(K); G diag(K)⁻¹ G^T]` — que requer montagem explícita do complemento
+de Schur aproximado. Esse trabalho está identificado no `TODO.md` §8.3.
 
-Resultado:
+A API `diag_precond` fica mantida em `gmres_solve` para uso futuro.
 
-| Métrica | Valor |
-| --- | ---: |
-| nodes | 3089 |
-| constraints | 1082 |
-| augmented_size | 4171 |
-| K_nnz | 400859 |
-| A_aug_nnz | 447167 |
-| support_min | 8 |
-| support_mean | 26.818963 |
-| support_max | 54 |
-| support_lt_4 | 0 |
-| support_lt_8 | 0 |
-| mls_failures | 0 |
-| max_cond_estimate | 1.811399e+03 |
-| gmres_iterations | 832 |
-| residual_final | 1.684110e-07 |
-| relative_error_global | 3.284785e-02 |
-| relative_error_interior | 2.776750e-02 |
-| max_abs_error | 9.407446e-01 |
-| assembly_time_s | 0.827809 |
-| solve_time_s | 0.716326 |
-
-Plano `x = 5.33`:
-
-```text
-plane_relative_error:    6.801632e-02
-interior_relative_error: 4.440404e-02
-central_window_rel:      2.896193e-02
-upper_edge_open_rel:     1.708254e-01
-```
-
-Conclusão:
-
-- O caso passou todos os critérios de parada.
-- O erro 3D interior ficou ligeiramente melhor que o regular `15x15x15`
-  (`2,776750 %` contra `2,801970 %`).
-- O plano interior também melhorou levemente (`4,4404 %` contra `4,5519 %`).
-- A janela central piorou e o GMRES subiu para `832` iterações.
-
-Próxima etapa recomendada:
-
-```text
-Não avançar para nuvem maior ainda. Antes, avaliar precondicionador simples
-ou ajuste da distribuição de pontos para reduzir condicionamento/iterações.
-```
-
----
-
-## 2026-05-06 07:10:45 -03 — Documentação final da Figura 3
-
-Objetivo da rodada:
-
-```text
-Consolidar a documentação da Figura 3 após a política Dirichlet compatível com
-a série, comparando regular 15x15x15 e nonuniform no plano x = 5.33.
-```
-
-Arquivos modificados:
-
-- `docs/figure3_reproduction.md`
-- `docs/dev/TEST_REPORT.md`
-- `docs/dev/CODEX_IMPLEMENTATION_LOG.md`
-- `TODO.md`
-
-Arquivos gerados não versionados:
-
-- `data/output/figures_nonuniform/`
-- `data/output/figure3_region_error_summary.csv`
-
-Resumo técnico:
-
-- Geradas figuras equivalentes para o CSV `cube_plane_x_5_33_nonuniform.csv`
-  em `data/output/figures_nonuniform/`.
-- Gerado CSV regional comparando `regular_refine15` e
-  `nonuniform_article_cloud`.
-- Documentada a decisão de usar o caso regular `15x15x15` como figura
-  principal:
-  - menor erro interior do plano (`4,55 %` contra `5,14 %`);
-  - menor erro na janela central (`0,93 %` contra `0,99 %`);
-  - GMRES muito mais barato (`69` contra `391` iterações);
-  - figuras principais já são derivadas do CSV regular.
-- A nuvem `nonuniform` permanece como comparação suplementar e evidência de
-  que o pipeline aceita distribuições não uniformes.
-- Marcados no `TODO.md`:
-  - erro em regiões próximas às arestas superiores;
-  - comparação com erro máximo reportado no artigo;
-  - documentação das divergências.
-
-Resultados regionais principais:
-
-| Caso | Região | max abs | mean abs | rel |
-| --- | --- | ---: | ---: | ---: |
-| regular | plano interior | 4.5832 | 0.03399 | 4.5519 % |
-| regular | upper edge open | 4.5832 | 0.66973 | 18.9098 % |
-| regular | central window | 0.06822 | 0.01839 | 0.9304 % |
-| nonuniform | plano interior | 4.5780 | 0.04278 | 5.1413 % |
-| nonuniform | upper edge open | 4.5780 | 0.80546 | 20.7600 % |
-| nonuniform | central window | 0.09069 | 0.01942 | 0.9919 % |
-
-Conclusão:
-
-```text
-A reprodução qualitativa da Figura 3 está documentada. Os valores quantitativos
-do artigo (1,40 % e 0,15 V) ainda não foram alcançados; as divergências estão
-atribuídas à grade regular, métrica discreta, série truncada e ausência de
-comparação digital com os níveis exatos da figura publicada.
-```
-
-Próxima etapa recomendada:
-
-```text
-Retomar nuvem não uniforme: testar base_n=13, top_n=15 ou ajustar z_frac /
-n_extra_slices, mantendo atenção ao custo GMRES e ao condicionamento MLS.
-```
-
----
-
-## 2026-05-06 07:03:18 -03 — Política Dirichlet compatível com a série
-
-Objetivo da rodada:
-
-```text
-Aplicar globalmente a política em que as arestas/cantos superiores herdam V = 0
-das paredes laterais, enquanto V = V0 vale somente no interior aberto da face z = L.
-```
-
-Arquivos modificados:
-
-- `src/cube_problem.c`
-- `tests/test_cube_problem.c`
-- `tests/test_cube_problem_dirichlet_from_nodes.c`
-- `tests/test_cube_problem_solve_small.c`
-- `apps/reproduce_cube_sparse.c`
-- `TODO.md`
-- `docs/06_condicoes_de_contorno_e_lagrange.md`
-- `docs/figure3_reproduction.md`
-- `docs/dev/TEST_REPORT.md`
-- `docs/dev/CODEX_IMPLEMENTATION_LOG.md`
-
-Resumo técnico:
-
-- Adicionado helper interno em `src/cube_problem.c` para calcular o valor
-  Dirichlet do cubo.
-- `cube_generate_dirichlet_points` e
-  `cube_generate_dirichlet_points_from_nodes` agora usam a mesma regra:
-
-  ```text
-  V = V0 somente se z = L e 0 < x < L e 0 < y < L
-  V = 0 nas demais superfícies, incluindo arestas e cantos superiores
-  ```
-
-- A contagem de restrições não mudou.
-- O formato das structs públicas não mudou.
-- Solver, montagem esparsa, GMRES e schema dos CSVs não foram alterados.
-- Comentários didáticos que mencionavam prioridade da face superior foram
-  atualizados nos pontos ativos do código.
-- Testes unitários foram atualizados para verificar que, em `3x3x3`, somente
-  `(x=5,y=5,z=10)` recebe `V0`; os cantos superiores recebem `0`.
-
-Comandos executados:
-
-```bash
-cmake --build build
-/usr/bin/ctest --test-dir build --output-on-failure
-./build/reproduce_cube_sparse --case sanity
-./build/reproduce_cube_sparse --case target
-./build/reproduce_cube_sparse --case refine13
-./build/reproduce_cube_sparse --case refine15
-./build/reproduce_cube_sparse --case plane15
-./build/reproduce_cube_sparse --case nonuniform
-python3 scripts/plot_cube_plane.py --all
-git diff --check
-```
-
-Resultados principais:
-
-| Caso | GMRES | rel global | rel interior | max abs |
-| --- | ---: | ---: | ---: | ---: |
-| 5x5x5 | 90 | 3.523634e-01 | 1.894514e-01 | 9.003920e+00 |
-| 11x11x11 | 67 | 4.184668e-02 | 5.134600e-02 | 8.523242e-01 |
-| 13x13x13 | 66 | 3.005864e-02 | 4.185387e-02 | 7.438111e-01 |
-| 15x15x15 | 69 | 2.365161e-02 | 2.801970e-02 | 4.642650e-01 |
-| nonuniform | 391 | 3.323664e-02 | 2.964210e-02 | 8.344899e-01 |
-
-Exportação do plano `x = 5.33`:
-
-```text
-exported points: 10201
-MLS failures: 0
-plane_max_abs_error: 8.8853802327955815
-plane_mean_abs_error: 0.039757980669987383
-plane_relative_error: 0.071030239356406136
-interior_relative_error: 0.045519082240473685
-```
-
-Conclusão:
-
-- Build sem erros.
-- `28/28` testes passaram.
-- Todos os casos executados convergiram com `support_lt_4 = 0`,
-  `support_lt_8 = 0`, `mls_failures = 0` e `gmres_converged = YES`.
-- A mudança removeu o erro estrutural `max_abs_error ≈ V0` nos casos 3D
-  refinados; no `15x15x15`, o erro máximo caiu para `4.642650e-01`.
-- O plano ainda tem erro máximo alto junto à tampa, associado à fronteira
-  descontínua, à MLS não interpolante e ao Gibbs da série truncada.
-
-Próxima etapa recomendada:
-
-```text
-Revisar a documentação final da Figura 3 com os novos números e decidir se a
-comparação principal deve citar o caso regular 15x15x15 ou a nuvem não uniforme
-article_cloud, agora que ambos têm erro interior próximo de 3%.
-```
+Testes: 28/28 passando.
 
 ---
 

@@ -341,13 +341,18 @@ com matriz esparsa CSR.
   - tolerância;
   - convergência ou falha.
 - [x] Implementar versão reiniciada, por exemplo GMRES(m), se necessário.
-- [ ] Avaliar necessidade de precondicionador.
+- [x] Avaliar necessidade de precondicionador.
 
 ### 8.3. Possíveis precondicionadores futuros
 
-- [ ] Jacobi.
-- [ ] ILU simples.
-- [ ] Escalonamento diagonal.
+- [x] Jacobi — implementado; **não eficaz** para o sistema aumentado [K G^T; G 0].
+  O bloco (2,2) tem diagonal zero → diag_inv = 1 para as linhas dos multiplicadores →
+  disparidade de escala não melhora o condicionamento. 96 iter (vs. 69 sem precond)
+  para regular 15×15×15; 858 iter (vs. 832) para nonuniform_refine. API mantida.
+- [ ] Precondicionador bloco-diagonal [diag(K); G diag(K)⁻¹ G^T] — abordagem correta
+  para sistemas de ponto-sela; requer montagem explícita do complemento de Schur aproximado.
+- [ ] SSOR ou escalonamento simétrico — pode ajudar sem bloco-diagonal.
+- [ ] ILU simples — mais caro, mas mais geral.
 
 ---
 
@@ -600,5 +605,6 @@ série analítica usada como referência.
 
 Concluído em 2026-05-06. A política passou a ser global nos geradores
 Dirichlet regular e por nuvem arbitrária. Com `15x15x15`, o erro global caiu
-de `5.530370e-01` para `2.365161e-02`, mantendo `support_lt_4 = 0`,
+de `5.530370e-01` para `2.365161e-02` (erro relativo global), e o erro máximo
+absoluto 3D caiu de `~V0` para `4.642650e-01`, mantendo `support_lt_4 = 0`,
 `mls_failures = 0` e `gmres_converged = YES`.
