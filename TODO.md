@@ -365,7 +365,10 @@ Casos uniformes iniciais:
 - [x] 13x13x13 nós, 15x15x15 células — executado com `reproduce_cube_sparse --case refine13`.
 - [x] 15x15x15 nós, 15x15x15 células — executado com `reproduce_cube_sparse --case refine15`.
 
-Depois, testar nuvens não uniformes somente após diagnóstico de conectividade e condicionamento.
+Nuvem não uniforme:
+
+- [x] base_n=11, top_n=13, n_extra_slices=4, z_frac=0.30 — executado com `reproduce_cube_sparse --case nonuniform`.
+  - 1974 nós, 762 restrições (38,6 % de superfície), erro interior 4,63 %, GMRES 428 iterações.
 
 ### 9.3. Métricas
 
@@ -435,20 +438,38 @@ x = 5.33
 
 ### 11.1. Status
 
-A primeira tentativa de nuvem não uniforme foi útil como experimento, mas não deve ser a linha principal agora.
+A primeira tentativa de nuvem não uniforme (base_n=7, refine_n=11) foi diagnosticada como
+falha por excesso de nós de superfície (60 % de restrições). Uma segunda abordagem foi
+implementada e validada com `cube_generate_article_cloud`.
 
-### 11.2. Manter como investigação secundária
+### 11.2. Resultados da nuvem article cloud (2026-05-06)
 
-- [ ] Reavaliar depois da implementação esparsa.
-- [ ] Reavaliar depois do diagnóstico de conectividade.
-- [ ] Reavaliar depois do diagnóstico de condicionamento MLS.
-- [ ] Evitar nuvens dominadas por pontos de superfície.
-- [ ] Buscar equilíbrio entre:
+| Parâmetro | Valor |
+| --- | --- |
+| base_n | 11 |
+| top_n | 13 |
+| n_extra_slices | 4 |
+| z_frac | 0,30 |
+| Nós totais | 1974 |
+| Restrições | 762 (38,6 % de superfície) |
+| support_lt_4 | 0 |
+| mls_failures | 0 |
+| GMRES convergiu | YES |
+| GMRES iterações | 428 |
+| Erro relativo interior | 4,63 % |
+| Erro relativo interior 11×11×11 regular | 5,55 % |
+| Erro relativo interior 15×15×15 regular | 2,81 % |
 
-  - nós internos;
-  - nós de superfície;
-  - refinamento próximo às arestas superiores;
-  - estabilidade da matriz de momento.
+A nuvem reduziu o erro interior em relação ao 11×11×11 regular com número semelhante de nós,
+confirmando que a estratégia de adicionar somente nós interiores-em-xy na zona superior evita
+o problema de dominância por restrições.
+
+### 11.3. Próximos passos opcionais
+
+- [ ] Ajustar z_frac e n_extra_slices para concentrar mais nós na região de gradiente crítico.
+- [ ] Testar base_n=13, top_n=15 para avaliar convergência da nuvem não uniforme.
+- [ ] Avaliar necessidade de precondicionador para reduzir as 428 iterações do GMRES.
+- [ ] Evitar nuvens dominadas por pontos de superfície (razão documentada no §1).
 
 ---
 
@@ -535,3 +556,14 @@ O projeto será considerado cientificamente consistente quando conseguir:
   - multiplicadores de Lagrange;
   - GMRES;
   - distribuição regular versus não uniforme de nós.
+
+
+
+## Importante - avaliar
+
+[ ] Para validação contra a solução analítica seno-seno-sinh do problema do cubo,
+as arestas superiores devem herdar a condição das paredes laterais, V = 0.
+A condição V = V0 é aplicada somente no interior aberto da face z = L.
+Essa política evita impor, no mesmo ponto geométrico, duas condições de
+Dirichlet incompatíveis e torna a fronteira numérica compatível com a
+série analítica usada como referência.

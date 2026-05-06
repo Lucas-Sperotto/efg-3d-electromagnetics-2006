@@ -1,5 +1,101 @@
 # TEST_REPORT — Relatório de testes e execuções
 
+## Nuvem não uniforme `--case nonuniform`
+
+Data: 2026-05-06
+
+Comandos:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case nonuniform
+```
+
+### Build — nonuniform
+
+```text
+[100%] Built target test_gmres
+```
+
+Conclusão: build completo sem erros.
+
+### Testes — nonuniform
+
+```text
+100% tests passed, 0 tests failed out of 28
+Total Test time (real) = 0.12 sec
+```
+
+### Execução do caso nonuniform
+
+```text
+=== Nonuniform cloud (base=11 top=13 slices=4 z_frac=0.30) ===
+
+--- Problem ---
+  nodes:                  1974
+  constraints:            762
+  augmented size:         2736
+
+--- MLS diagnostic  (cell-centre grid 15x15x15 = 3375 pts) ---
+  invalid (active < 4):   0
+  suspect (active < 8):   0
+  moment matrix failures: 0
+  min active nodes:       8
+  max active nodes:       53
+  mean active nodes:      24.656888888888886
+  max cond estimate:      1.303054e+03
+
+--- Sparse assembly ---
+  K nnz  (|v| > 0):       239982
+  A_aug COO entries:      269880
+  A_aug CSR nnz:          269880
+  assembly time:          0.521 s
+
+--- GMRES ---
+  restart:                300
+  max iter:               20000
+  tolerance:              1.0e-09
+  iterations:             428
+  residual init:          1.676305e+02
+  residual final:         1.606441e-07
+  rel residual:           9.580e-10
+  converged:              YES
+  solution time:          0.164 s
+
+--- Errors  (sample grid 11x11x11, valid=1331 interior=729) ---
+  max abs error:          1.000000e+01
+  rel error (global):     5.529938e-01
+  rel error (interior):   4.631267e-02
+
+--- Plane export ---
+  csv:                    data/output/cube_plane_x_5_33_nonuniform.csv
+  x plane:                5.3300000000000001
+  y samples:              101
+  z samples:              101
+  exported points:        10201
+  valid points:           10201
+  MLS failures:           0
+```
+
+### Critérios de aceitação — nonuniform
+
+```text
+support_lt_4:    0   (obrigatório — PASSOU)
+support_lt_8:    0   (PASSOU)
+mls_failures:    0   (PASSOU)
+gmres_converged: YES (PASSOU)
+rel error interior: 4,63 % < 5,55 % do 11×11×11 regular (PASSOU)
+```
+
+Conclusão:
+
+```text
+PASSOU
+```
+
+---
+
 ## Ajuste de contornos para Figura 3
 
 Data: 2026-05-05 23:01:07 -03

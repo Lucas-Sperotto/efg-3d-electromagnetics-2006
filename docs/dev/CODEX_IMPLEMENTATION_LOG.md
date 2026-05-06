@@ -1,5 +1,127 @@
 # CODEX_IMPLEMENTATION_LOG — Registro de implementação
 
+## 2026-05-06 — Nuvem não uniforme `cube_generate_article_cloud`
+
+Objetivo da rodada:
+
+```text
+Implementar nuvem não uniforme inspirada na Fig. 2 do artigo (Parreira et al., 2006),
+usando grade base regular reforçada com fatias interiores na zona superior do cubo,
+e executar o caso nonuniform para comparar com os resultados regulares.
+```
+
+Arquivos modificados:
+
+- `src/cube_problem.c` — duas novas funções: `cube_article_cloud_max_nodes` e `cube_generate_article_cloud`
+- `include/cube_problem.h` — declarações das duas novas funções
+- `apps/reproduce_cube_sparse.c` — enum `CUBE_SPARSE_NONUNIFORM`, função `run_case_nonuniform`, CLI `--case nonuniform`
+
+Arquivos de saída gerados (não versionados):
+
+- `data/output/cube_plane_x_5_33_nonuniform.csv` — plano x = 5.33 da nuvem não uniforme (10 201 pontos)
+- `data/output/reproduce_cube_sparse_report.csv` — linha adicionada com resultado nonuniform
+
+Resumo técnico:
+
+**Diagnóstico da tentativa anterior:**
+
+A função `cube_generate_top_refined_nodes` (base_n=7, refine_n=11) gerava edge lines
+(t, 0, z) e (t, L, z) que são inteiramente nós de superfície (y=0 e y=L são faces do cubo).
+Resultado: 786 restrições em 1308 nós (60 % de superfície) → condicionamento degradado →
+erro interior 15,3 %.
+
+**Nova estratégia — `cube_generate_article_cloud`:**
+
+1. Grade regular base_n³ como esqueleto.
+2. Face z = L com grade top_n × top_n completa (todos Dirichlet V = V₀, desejado).
+3. Para s = 1 .. n_extra_slices: z_s = L − s × (L × z_frac / n_extra_slices).
+   Adiciona apenas ix = 1..top_n−2, iy = 1..top_n−2 (interior em xy), sem nós laterais extras.
+4. Deduplicação via `append_unique_node`.
+
+`cube_article_cloud_max_nodes` retorna base_n³ + top_n² + n_extra_slices × (top_n−2)² como
+cota superior conservadora.
+
+**Parâmetros executados:** base_n=11, top_n=13, n_extra_slices=4, z_frac=0.30.
+
+**Resultados:**
+
+| Métrica | Nuvem não uniforme | 11×11×11 regular | 15×15×15 regular |
+| --- | --- | --- | --- |
+| Nós totais | 1974 | 1331 | 3375 |
+| Restrições | 762 (38,6 %) | 602 (45,2 %) | 1178 (34,9 %) |
+| support_lt_4 | 0 | 0 | 0 |
+| mls_failures | 0 | 0 | 0 |
+| GMRES convergiu | YES | YES | YES |
+| GMRES iterações | 428 | — | 70 |
+| Erro interior | 4,63 % | 5,55 % | 2,81 % |
+| max_abs_error | ~V₀ | ~V₀ | ~V₀ |
+
+A nuvem melhorou o erro interior em relação ao 11×11×11 regular com número semelhante de nós.
+O GMRES exigiu mais iterações (428 vs. 70) porque os raios de suporte variam de 8 a 53
+(vs. 8 a 27 no regular), tornando o sistema menos uniformemente condicionado.
+
+Comandos executados:
+
+```bash
+cmake --build build
+/usr/bin/ctest --test-dir build --output-on-failure
+./build/reproduce_cube_sparse --case nonuniform
+```
+
+Saída principal:
+
+```text
+=== Nonuniform cloud (base=11 top=13 slices=4 z_frac=0.30) ===
+
+--- Problem ---
+  nodes:                  1974
+  constraints:            762
+  augmented size:         2736
+
+--- MLS diagnostic ---
+  invalid (active < 4):   0
+  suspect (active < 8):   0
+  moment matrix failures: 0
+  min active nodes:       8
+  max active nodes:       53
+  mean active nodes:      24.66
+  max cond estimate:      1303.1
+
+--- Sparse assembly ---
+  K nnz  (|v| > 0):       239982
+  A_aug CSR nnz:          269880
+  assembly time:          0.521 s
+
+--- GMRES ---
+  restart:                300
+  max iter:               20000
+  tolerance:              1.0e-09
+  iterations:             428
+  residual init:          1.676302e+02
+  residual final:         1.606441e-07
+  rel residual:           9.58e-10
+  converged:              YES
+  solution time:          0.164 s
+
+--- Errors (sample grid 11x11x11) ---
+  max abs error:          1.000000e+01
+  rel error (global):     5.530e-01
+  rel error (interior):   4.631e-02
+```
+
+Problemas encontrados:
+
+- Nenhum. Build limpo, 28/28 testes passando, GMRES convergido, support_lt_4 = 0.
+
+Próxima etapa recomendada:
+
+```text
+Ajustar z_frac ou n_extra_slices para concentrar mais nós na zona de gradiente crítico
+(y → 0 ou y → L, z → L), ou implementar precondicionador Jacobi para reduzir iterações GMRES.
+```
+
+---
+
 ## 2026-05-05 23:01:07 -03 — Iso-linhas para comparação com Figura 3
 
 Objetivo da rodada:
