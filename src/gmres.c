@@ -43,6 +43,7 @@ int gmres_solve(const SparseCSR *A,
                 double           tol,
                 int              max_iter,
                 int              restart,
+                const double    *diag_precond,
                 GmresResult     *result)
 {
     const double eps = 1.0e-30;
@@ -83,13 +84,18 @@ int gmres_solve(const SparseCSR *A,
         return GMRES_ALLOCATION_FAILED;
     }
 
-    /* Initial residual r = b - A*x */
+    /* Initial residual r = b - A*x (true residual, for reporting) */
     sparse_csr_matvec(A, x, r);
     for (int i = 0; i < n; ++i) {
         r[i] = b[i] - r[i];
     }
+    result->residual_init = norm2_n(r, n);
+
+    /* Apply left preconditioner M⁻¹ = diag(diag_precond) if supplied */
+    if (diag_precond) {
+        for (int i = 0; i < n; ++i) r[i] *= diag_precond[i];
+    }
     beta0 = norm2_n(r, n);
-    result->residual_init = beta0;
 
     total_iter = 0;
     converged  = 0;
@@ -105,6 +111,9 @@ int gmres_solve(const SparseCSR *A,
         sparse_csr_matvec(A, x, r);
         for (int i = 0; i < n; ++i) {
             r[i] = b[i] - r[i];
+        }
+        if (diag_precond) {
+            for (int i = 0; i < n; ++i) r[i] *= diag_precond[i];
         }
         beta = norm2_n(r, n);
 
@@ -129,8 +138,11 @@ int gmres_solve(const SparseCSR *A,
 
         for (int j = 0; j < restart && total_iter < max_iter; ++j) {
 
-            /* w = A * V[j] */
+            /* w = A * V[j], then apply left preconditioner */
             sparse_csr_matvec(A, V + j * n, w);
+            if (diag_precond) {
+                for (int k = 0; k < n; ++k) w[k] *= diag_precond[k];
+            }
 
             /* Modified Gram-Schmidt orthogonalisation */
             for (int i = 0; i <= j; ++i) {

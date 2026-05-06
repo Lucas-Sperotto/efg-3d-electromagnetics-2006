@@ -76,7 +76,7 @@ static void test_gmres_manual_5x5(void)
     /* GMRES solve — zero initial guess */
     memset(x, 0, sizeof(x));
     if (gmres_solve(&A_aug_csr, b_aug, x,
-                    TOL_GMRES, 50, 10, &res) != GMRES_OK) {
+                    TOL_GMRES, 50, 10, NULL, &res) != GMRES_OK) {
         fail("gmres_solve returned error");
     }
 
@@ -257,7 +257,7 @@ static void test_gmres_vs_dense_3x3x3(void)
     /* GMRES solve */
     memset(x_gmres, 0, (size_t)total_size * sizeof(double));
     if (gmres_solve(&A_aug_csr, b_dense, x_gmres,
-                    TOL_GMRES, 2000, total_size, &res) != GMRES_OK) {
+                    TOL_GMRES, 2000, total_size, NULL, &res) != GMRES_OK) {
         fail("gmres_solve returned error");
     }
 
@@ -299,9 +299,105 @@ static void test_gmres_vs_dense_3x3x3(void)
     free(A_dense); free(b_dense); free(x_dense); free(x_gmres);
 }
 
+/*
+ * Verify that Jacobi preconditioning (a) gives the same solution as without
+ * preconditioner and (b) converges in fewer or equal iterations on a system
+ * with large diagonal variation.
+ *
+ * System: 4×4 diagonal-dominant with entries scaled by 1..4 so the diagonal
+ * varies from 20 to 80.  Without preconditioning the condition number is
+ * proportional to max/min diagonal ≈ 4.  With Jacobi (D⁻¹A) it is 1.
+ * GMRES with restart=4 (full Arnoldi) should converge in ≤ 2 iterations
+ * with Jacobi and possibly more without.
+ */
+static void test_gmres_jacobi_precond(void)
+{
+    enum { N = 4 };
+    const double TOL_GMRES = 1e-10;
+    const double TOL_SOL   = 1e-8;
+
+    /* A is diagonally dominant with diagonal 20, 40, 60, 80 */
+    const double A_data[N * N] = {
+        20.0, -1.0, -1.0, -1.0,
+        -1.0, 40.0, -1.0, -1.0,
+        -1.0, -1.0, 60.0, -1.0,
+        -1.0, -1.0, -1.0, 80.0
+    };
+    const double b[N] = {1.0, 2.0, 3.0, 4.0};
+
+    SparseCOO coo;
+    SparseCSR csr;
+    GmresResult res_no, res_jac;
+    double x_no[N], x_jac[N];
+    double diag_inv[N];
+
+    sparse_coo_create(&coo, N, N, N * N);
+    for (int r = 0; r < N; ++r) {
+        for (int c = 0; c < N; ++c) {
+            if (fabs(A_data[r * N + c]) > 0.0) {
+                sparse_coo_add(&coo, r, c, A_data[r * N + c]);
+            }
+        }
+    }
+    sparse_coo_to_csr(&coo, &csr);
+
+    /* Build Jacobi preconditioner: 1/diag */
+    for (int i = 0; i < N; ++i) {
+        double d = 0.0;
+        for (int p = csr.row_ptr[i]; p < csr.row_ptr[i + 1]; ++p) {
+            if (csr.col_ind[p] == i) { d = csr.values[p]; break; }
+        }
+        diag_inv[i] = (fabs(d) > 1e-15) ? 1.0 / d : 1.0;
+    }
+
+    /* Solve without preconditioner */
+    memset(x_no, 0, sizeof(x_no));
+    if (gmres_solve(&csr, b, x_no, TOL_GMRES, 100, N, NULL, &res_no)
+            != GMRES_OK) {
+        fail("gmres_solve (no precond) returned error");
+    }
+    if (!res_no.converged) fail("GMRES (no precond) did not converge");
+
+    /* Solve with Jacobi */
+    memset(x_jac, 0, sizeof(x_jac));
+    if (gmres_solve(&csr, b, x_jac, TOL_GMRES, 100, N, diag_inv, &res_jac)
+            != GMRES_OK) {
+        fail("gmres_solve (Jacobi) returned error");
+    }
+    if (!res_jac.converged) fail("GMRES (Jacobi) did not converge");
+
+    /* Both solutions must agree */
+    for (int i = 0; i < N; ++i) {
+        if (fabs(x_no[i] - x_jac[i]) > TOL_SOL) {
+            fprintf(stderr,
+                    "FAIL solution[%d]: no_precond=%.10g jacobi=%.10g\n",
+                    i, x_no[i], x_jac[i]);
+            exit(1);
+        }
+    }
+
+    /* Jacobi must not need more iterations than unpreconditioned */
+    if (res_jac.iterations > res_no.iterations) {
+        fprintf(stderr,
+                "FAIL: Jacobi used more iterations (%d) than no-precond (%d)\n",
+                res_jac.iterations, res_no.iterations);
+        exit(1);
+    }
+
+    printf("PASS test_gmres_jacobi_precond: "
+           "no_precond iters=%d  jacobi iters=%d  "
+           "r_final_no=%.3e  r_final_jac=%.3e\n",
+           res_no.iterations, res_jac.iterations,
+           res_no.residual_final, res_jac.residual_final);
+
+    sparse_coo_destroy(&coo);
+    sparse_csr_destroy(&csr);
+}
+
 int main(void)
 {
     test_gmres_manual_5x5();
     test_gmres_vs_dense_3x3x3();
+    test_gmres_jacobi_precond();
     return 0;
 }

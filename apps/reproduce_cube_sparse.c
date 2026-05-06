@@ -408,6 +408,21 @@ static int parse_args(int argc, char **argv, CubeSparseSelection *selection)
 }
 
 /*
+ * Build left Jacobi preconditioner: diag_inv[i] = 1/A_ii.
+ * Rows with zero diagonal (the Lagrange multiplier block) get diag_inv[i]=1.
+ */
+static void build_jacobi_precond(const SparseCSR *A, double *diag_inv)
+{
+    for (int i = 0; i < A->nrows; ++i) {
+        double d = 0.0;
+        for (int p = A->row_ptr[i]; p < A->row_ptr[i + 1]; ++p) {
+            if (A->col_ind[p] == i) { d = A->values[p]; break; }
+        }
+        diag_inv[i] = (fabs(d) > 1e-15) ? 1.0 / d : 1.0;
+    }
+}
+
+/*
  * Sparse EFG pipeline for one problem configuration.
  *
  * Runs: node generation → MLS diagnostic → dense K/G assembly →
@@ -436,15 +451,16 @@ static int run_case(const char *label,
     double t_asm = 0.0, t_sol = 0.0;
     clock_t t_start;
 
-    Node3D         *nodes     = NULL;
-    DirichletPoint *dp        = NULL;
-    double         *K_dense   = NULL;
-    double         *G_dense   = NULL;
-    double         *F         = NULL;
-    double         *q_vec     = NULL;
-    double         *b_aug     = NULL;
-    double         *x_sol     = NULL;
-    MlsShapeValue  *shape_buf = NULL;
+    Node3D         *nodes           = NULL;
+    DirichletPoint *dp              = NULL;
+    double         *K_dense         = NULL;
+    double         *G_dense         = NULL;
+    double         *F               = NULL;
+    double         *q_vec           = NULL;
+    double         *b_aug           = NULL;
+    double         *x_sol           = NULL;
+    double         *jacobi_precond  = NULL;
+    MlsShapeValue  *shape_buf       = NULL;
 
     SparseCOO K_coo     = {NULL, NULL, NULL, 0, 0, 0, 0};
     SparseCOO A_aug_coo = {NULL, NULL, NULL, 0, 0, 0, 0};
@@ -672,16 +688,21 @@ static int run_case(const char *label,
     x_sol = calloc((size_t)total_size, sizeof(double));
     if (!x_sol) { fprintf(stderr, "[%s] x_sol alloc failed\n", label); goto done; }
 
+    jacobi_precond = malloc((size_t)total_size * sizeof(double));
+    if (!jacobi_precond) { fprintf(stderr, "[%s] jacobi alloc failed\n", label); goto done; }
+    build_jacobi_precond(&A_aug_csr, jacobi_precond);
+
     t_start = clock();
 
     /*
      * GMRES is used because the augmented system with Lagrange multipliers
      * is symmetric but indefinite (due to the zero block), so standard
      * conjugate gradient methods cannot be used.
+     * Left Jacobi preconditioner applied: scales each row by 1/A_ii.
      */
     if (gmres_solve(&A_aug_csr, b_aug, x_sol,
                     gmres_tol, gmres_max_iter, gmres_restart,
-                    &gmres_res) != GMRES_OK) {
+                    jacobi_precond, &gmres_res) != GMRES_OK) {
         fprintf(stderr, "[%s] gmres_solve returned error\n", label);
         goto done;
     }
@@ -893,6 +914,7 @@ done:
     free(q_vec);
     free(b_aug);
     free(x_sol);
+    free(jacobi_precond);
     free(shape_buf);
 
     sparse_coo_destroy(&K_coo);
@@ -926,15 +948,16 @@ static int run_case_nonuniform(const char *label,
     double t_asm = 0.0, t_sol = 0.0;
     clock_t t_start;
 
-    Node3D         *nodes     = NULL;
-    DirichletPoint *dp        = NULL;
-    double         *K_dense   = NULL;
-    double         *G_dense   = NULL;
-    double         *F         = NULL;
-    double         *q_vec     = NULL;
-    double         *b_aug     = NULL;
-    double         *x_sol     = NULL;
-    MlsShapeValue  *shape_buf = NULL;
+    Node3D         *nodes          = NULL;
+    DirichletPoint *dp             = NULL;
+    double         *K_dense        = NULL;
+    double         *G_dense        = NULL;
+    double         *F              = NULL;
+    double         *q_vec          = NULL;
+    double         *b_aug          = NULL;
+    double         *x_sol          = NULL;
+    double         *jacobi_precond = NULL;
+    MlsShapeValue  *shape_buf      = NULL;
 
     SparseCOO K_coo     = {NULL, NULL, NULL, 0, 0, 0, 0};
     SparseCOO A_aug_coo = {NULL, NULL, NULL, 0, 0, 0, 0};
@@ -1140,11 +1163,18 @@ static int run_case_nonuniform(const char *label,
         goto nu_done;
     }
 
+    jacobi_precond = malloc((size_t)total_size * sizeof(double));
+    if (!jacobi_precond) {
+        fprintf(stderr, "[%s] jacobi alloc failed\n", label);
+        goto nu_done;
+    }
+    build_jacobi_precond(&A_aug_csr, jacobi_precond);
+
     t_start = clock();
 
     if (gmres_solve(&A_aug_csr, b_aug, x_sol,
                     gmres_tol, gmres_max_iter, gmres_restart,
-                    &gmres_res) != GMRES_OK) {
+                    jacobi_precond, &gmres_res) != GMRES_OK) {
         fprintf(stderr, "[%s] gmres_solve returned error\n", label);
         goto nu_done;
     }
@@ -1313,6 +1343,7 @@ nu_done:
     free(q_vec);
     free(b_aug);
     free(x_sol);
+    free(jacobi_precond);
     free(shape_buf);
 
     sparse_coo_destroy(&K_coo);

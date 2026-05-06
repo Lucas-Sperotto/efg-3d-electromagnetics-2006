@@ -26,8 +26,13 @@ typedef struct GmresResult {
  *
  * x   — initial guess on input, approximate solution on output.
  * tol — relative tolerance: convergence when ||r_k|| / ||r_0|| < tol.
+ *       With a preconditioner, the ratio is in the preconditioned space.
  * max_iter — maximum total Arnoldi steps (across all restarts).
  * restart  — Krylov subspace dimension per restart cycle (e.g. 30).
+ * diag_precond — optional left Jacobi preconditioner: array of n pre-inverted
+ *                diagonal entries (i.e. 1/d_i). Pass NULL to disable.
+ *                result->residual_init and residual_final always report the
+ *                true (unpreconditioned) residual norm for comparability.
  *
  * Returns GMRES_OK on both convergence and non-convergence; inspect
  * result->converged to distinguish the two cases.
@@ -38,6 +43,7 @@ int gmres_solve(const SparseCSR *A,
                 double           tol,
                 int              max_iter,
                 int              restart,
+                const double    *diag_precond,
                 GmresResult     *result);
 
 /* Link-time smoke symbol — kept for backward compatibility. */
